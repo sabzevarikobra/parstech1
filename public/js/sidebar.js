@@ -1,96 +1,98 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // تنظیم منوی کاربر
-    const userMenuToggle = document.getElementById('userMenuToggle');
-    const userMenuDropdown = document.getElementById('userMenuDropdown');
+    // متغیرهای مورد نیاز
+    const sidebar = document.getElementById('sidebar');
+    const sidebarCollapse = document.getElementById('sidebarCollapse');
+    const submenuItems = document.querySelectorAll('.has-submenu');
 
-    if (userMenuToggle && userMenuDropdown) {
-        userMenuToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            userMenuDropdown.style.display =
-                userMenuDropdown.style.display === 'none' ||
-                userMenuDropdown.style.display === '' ? 'block' : 'none';
-        });
-
-        // بستن منو با کلیک خارج از آن
-        document.addEventListener('click', function(e) {
-            if (!userMenuToggle.contains(e.target) && !userMenuDropdown.contains(e.target)) {
-                userMenuDropdown.style.display = 'none';
-            }
+    // باز و بسته کردن سایدبار
+    if (sidebarCollapse) {
+        sidebarCollapse.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
         });
     }
 
-    // مدیریت منوهای سایدبار
-    const sidebarMenu = document.getElementById('sidebar-menu');
-    if (sidebarMenu) {
-        const menuLinks = sidebarMenu.querySelectorAll('.has-treeview > a');
+    // بازیابی وضعیت قبلی سایدبار
+    const sidebarState = localStorage.getItem('sidebarCollapsed');
+    if (sidebarState === 'true') {
+        sidebar.classList.add('collapsed');
+    }
 
-        menuLinks.forEach(function(link) {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const parentLi = this.parentElement;
-                const wasOpen = parentLi.classList.contains('menu-open');
+    // مدیریت زیرمنوها
+    submenuItems.forEach(item => {
+        const link = item.querySelector('.nav-link');
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
 
-                // بستن سایر منوها
-                sidebarMenu.querySelectorAll('.has-treeview.menu-open').forEach(function(item) {
-                    if (item !== parentLi) {
-                        item.classList.remove('menu-open');
-                    }
-                });
-
-                // تغییر وضعیت منوی فعلی
-                parentLi.classList.toggle('menu-open');
-
-                // انیمیشن نرم برای باز/بسته شدن
-                const submenu = parentLi.querySelector('.nav-treeview');
-                if (submenu) {
-                    if (!wasOpen) {
-                        submenu.style.display = 'block';
-                        submenu.style.maxHeight = submenu.scrollHeight + 'px';
-                    } else {
-                        submenu.style.maxHeight = '0';
-                        setTimeout(() => {
-                            submenu.style.display = 'none';
-                        }, 200);
-                    }
+            // بستن سایر زیرمنوهای باز
+            submenuItems.forEach(other => {
+                if (other !== item && other.classList.contains('open')) {
+                    other.classList.remove('open');
                 }
             });
-        });
-    }
 
-    // مدیریت نمایش سایدبار در موبایل
-    const toggleButtons = document.querySelectorAll('[data-widget="pushmenu"]');
-
-    toggleButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.body.classList.toggle('sidebar-open');
+            item.classList.toggle('open');
         });
     });
 
-    // بستن سایدبار در موبایل با کلیک خارج از آن
-    document.addEventListener('click', function(e) {
-        if (window.innerWidth <= 991.98) {
-            const sidebar = document.querySelector('.main-sidebar');
-            const toggleButton = document.querySelector('[data-widget="pushmenu"]');
+    // بستن زیرمنوها با کلیک خارج از آنها
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.has-submenu')) {
+            submenuItems.forEach(item => {
+                item.classList.remove('open');
+            });
+        }
+    });
 
-            if (!sidebar.contains(e.target) && !toggleButton.contains(e.target)) {
-                document.body.classList.remove('sidebar-open');
+    // نمایش منوی فعال
+    const currentPath = window.location.pathname;
+    const menuLinks = document.querySelectorAll('.nav-link, .submenu a');
+
+    menuLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+            const parentItem = link.closest('.has-submenu');
+            if (parentItem) {
+                parentItem.classList.add('open');
             }
         }
     });
 
-    // تنظیم منوی فعال بر اساس URL
-    const currentPath = window.location.pathname;
-    const navLinks = document.querySelectorAll('.nav-sidebar .nav-link');
+    // پشتیبانی از تاچ
+    let touchStartX = 0;
+    let touchEndX = 0;
 
-    navLinks.forEach(function(link) {
-        if (link.getAttribute('href') && currentPath.includes(link.getAttribute('href'))) {
-            link.classList.add('active');
+    sidebar.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, false);
 
-            const treeview = link.closest('.nav-treeview');
-            if (treeview) {
-                treeview.parentElement.classList.add('menu-open');
+    sidebar.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, false);
+
+    function handleSwipe() {
+        const SWIPE_THRESHOLD = 50;
+        const diff = touchStartX - touchEndX;
+
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
+            if (diff > 0) {
+                // کشیدن به چپ
+                sidebar.classList.add('collapsed');
+            } else {
+                // کشیدن به راست
+                sidebar.classList.remove('collapsed');
             }
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+    }
+
+    // پشتیبانی از کلیدهای میانبر
+    document.addEventListener('keydown', (e) => {
+        // Alt + S برای باز/بسته کردن سایدبار
+        if (e.altKey && e.key === 's') {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
         }
     });
 });

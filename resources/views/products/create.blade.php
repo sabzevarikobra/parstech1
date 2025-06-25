@@ -3,7 +3,7 @@
 
 @section('head')
     <link rel="stylesheet" href="{{ asset('css/products-create.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/sidebar-custom.css') }}">
+
     <link rel="stylesheet" href="https://unpkg.com/dropzone@6.0.0-beta.2/dist/dropzone.css" />
 @endsection
 
