@@ -2,7 +2,14 @@
 /*      Sidebar Advanced RTL      */
 /*      Parstech 2025 UI Kit      */
 /* ============================= */
-
+/* رنگ‌بندی اختصاصی آیکون‌ها (کلاس کمکی) */
+.text-info    { color: #1976d2 !important; }
+.text-success { color: #388e3c !important; }
+.text-warning { color: #fbc02d !important; }
+.text-danger  { color: #e53935 !important; }
+.text-primary { color: #0288d1 !important; }
+.text-secondary { color: #6c757d !important; }
+.text-purple  { color: #8e24aa !important; }
 /* ----------- Font ------------ */
 body, .main-sidebar, .sidebar-content, .sidebar-content-inner,
 .nav-menu, .nav-link, .submenu, .brand-link, .user-panel, .user-menu, .user-details, .user-name, .user-role {
@@ -245,6 +252,7 @@ html, body {
     position: relative;
     margin: 1.5px 0;
     animation: slideIn .32s;
+    text-align: right;
 }
 @keyframes slideIn {
     from { opacity: 0; transform: translateY(12px);}
@@ -696,3 +704,48 @@ a, button {
 .transition { transition: all 0.22s cubic-bezier(.3,1.05,.41,1.07) !important; }
 
 /* --------- End Of File --------- */
+/* --- User menu dropdown animation --- */
+.user-info-btn {
+    display: flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    width: 100%;
+    padding: 0;
+    cursor: pointer;
+    gap: 1.1rem;
+    transition: background 0.18s;
+}
+.user-info-btn:focus {
+    background: #f1f3f9;
+    outline: none;
+}
+.user-menu-arrow {
+    margin-right: auto;
+    margin-left: 0.3rem;
+    font-size: 1.06rem;
+    color: #bababa;
+    transition: transform 0.22s;
+}
+.user-info-btn.open .user-menu-arrow {
+    transform: rotate(-180deg);
+    color: #1976d2;
+}
+.user-menu {
+    margin-top: 0.6rem;
+    border-top: 1px solid #e8eaf1;
+    padding-top: 0.7rem;
+    display: none;
+    flex-direction: column;
+    gap: 0.3rem;
+    background: #fff;
+    border-radius: 0 0 8px 8px;
+    animation: userMenuFadeIn 0.22s;
+    box-shadow: 0 4px 14px 0 rgba(44,62,80,0.09);
+    z-index: 1050;
+    position: relative;
+}
+@keyframes userMenuFadeIn {
+    from { opacity: 0; transform: translateY(-8px);}
+    to   { opacity: 1; transform: translateY(0);}
+}
