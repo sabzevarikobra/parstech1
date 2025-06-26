@@ -29,9 +29,25 @@ class CategoryController extends Controller
             'nextPersonCode', 'nextProductCode', 'nextServiceCode'
         ));
     }
-
+    public function apiList(Request $request)
+    {
+        $type = $request->get('type', null);
+        $query = \App\Models\Category::query();
+        if ($type) {
+            $query->where('category_type', $type);
+        }
+        return $query->orderBy('id', 'desc')->paginate(7); // هر صفحه ۷ تا
+    }
     public function store(Request $request)
     {
+        $category = \App\Models\Category::create([
+            'name' => $request->name,
+            'category_type' => 'service',
+        ]);
+        if($request->ajax())
+            return response()->json(['id' => $category->id, 'name' => $category->name]);
+        return redirect()->back();
+        
         $request->validate([
             'name' => 'required|string|max:191',
             'code' => 'nullable|string|max:100',

@@ -343,7 +343,7 @@ Route::prefix('sales')->name('sales.')->group(function () {
 
 // برای دسته‌بندی‌ها اگر لازم است
 Route::get('/api/categories', [CategoryController::class, 'apiList']);
-
+Route::get('/api/categories', [\App\Http\Controllers\CategoryController::class, 'apiList']);
 
 
 
