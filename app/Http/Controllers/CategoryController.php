@@ -37,6 +37,7 @@ class CategoryController extends Controller
             $query->where('category_type', $type);
         }
         return $query->orderBy('id', 'desc')->paginate(7); // هر صفحه ۷ تا
+        return \App\Models\ServiceCategory::orderBy('id', 'desc')->paginate(7);
     }
     public function store(Request $request)
     {
@@ -47,7 +48,7 @@ class CategoryController extends Controller
         if($request->ajax())
             return response()->json(['id' => $category->id, 'name' => $category->name]);
         return redirect()->back();
-        
+
         $request->validate([
             'name' => 'required|string|max:191',
             'code' => 'nullable|string|max:100',

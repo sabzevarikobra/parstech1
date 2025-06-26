@@ -17,12 +17,11 @@ class ServiceController extends Controller
      */
     public function create()
     {
-        $serviceCategories = Category::where('category_type', 'service')->get();
-        $units = Unit::orderBy('title')->get();
-        $shareholders = Shareholder::all(); // این خط برای پاس دادن به ویو لازم است
+        $serviceCategories = \App\Models\ServiceCategory::all();
+        $units = \App\Models\Unit::all();
+        $shareholders = \App\Models\Shareholder::all();
         return view('services.create', compact('serviceCategories', 'units', 'shareholders'));
     }
-
 
     /**
      * لیست خدمات

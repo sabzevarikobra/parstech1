@@ -80,6 +80,9 @@
         padding-bottom: 0.3rem;
         letter-spacing: 0.01em;
     }
+    .category-modal-list { min-height: 120px; }
+    .pagination { justify-content: center; }
+    .modal-backdrop.show { opacity: 0.2; }
     @media (max-width: 700px) {
         .card.service-card { padding: 0.5rem; }
         .service-header { padding: 1rem 1.1rem; font-size: 1.1rem; }
@@ -151,12 +154,17 @@
                         <div class="row mb-3">
                             <div class="col-md-6 mb-3">
                                 <label for="service_category_id" class="form-label">دسته‌بندی خدمت</label>
-                                <select name="service_category_id" id="service_category_id" class="form-select">
-                                    <option value="">انتخاب کنید</option>
-                                    @foreach($serviceCategories ?? [] as $cat)
-                                        <option value="{{ $cat->id }}" {{ old('service_category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="input-group">
+                                    <select name="service_category_id" id="service_category_id" class="form-select">
+                                        <option value="">انتخاب کنید</option>
+                                        @foreach($serviceCategories as $cat)
+                                            <option value="{{ $cat->id }}" {{ old('service_category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" id="add-category-btn">
+                                        <i class="fa fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="price" class="form-label required">مبلغ فروش (تومان)</label>
@@ -267,13 +275,45 @@
         </form>
     </div>
 </div>
+
+<!-- Modal افزودن دسته‌بندی جدید -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="add-category-form" autocomplete="off">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addCategoryModalLabel">افزودن دسته‌بندی جدید</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" id="new-category-name" class="form-control" placeholder="نام دسته‌بندی جدید" required>
+                    </div>
+                    <button type="submit" class="btn btn-success mb-3">ثبت دسته‌بندی</button>
+                    <hr>
+                    <div id="category-list-section">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span style="font-weight:bold;">لیست دسته‌بندی‌ها</span>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="prev-cat-page">قبلی</button>
+                                <span id="cat-page-info" style="font-size:1em;">صفحه <span id="cat-current-page">1</span></span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="next-cat-page">بعدی</button>
+                            </div>
+                        </div>
+                        <ul id="category-modal-list" class="list-group category-modal-list"></ul>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
 <script src="{{ asset('js/service-create.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // مقداردهی اولیه کد خدمت (همانند قبل)
+    // مقداردهی اولیه کد خدمت
     let codeInput = document.getElementById('service_code');
     let customSwitch = document.getElementById('custom_code_switch');
     let loadingCode = false;
@@ -317,6 +357,105 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // مدیریت دسته‌بندی خدمات (پاپ‌آپ و صفحه‌بندی)
+    const addCategoryBtn = document.getElementById('add-category-btn');
+    const addCategoryModal = document.getElementById('addCategoryModal');
+    const addCategoryForm = document.getElementById('add-category-form');
+    const newCategoryInput = document.getElementById('new-category-name');
+    const categorySelect = document.getElementById('service_category_id');
+    const categoryModalList = document.getElementById('category-modal-list');
+    const prevCatPageBtn = document.getElementById('prev-cat-page');
+    const nextCatPageBtn = document.getElementById('next-cat-page');
+    const catPageInfo = document.getElementById('cat-current-page');
+    let catCurrentPage = 1;
+    let catLastPage = 1;
+
+    function fetchCategoryPage(page = 1) {
+        fetch(`/api/categories?page=${page}&type=service`)
+            .then(res => res.json())
+            .then(data => {
+                categoryModalList.innerHTML = '';
+                data.data.forEach(cat => {
+                    let li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center p-2';
+                    li.innerHTML = `
+                        <span>${cat.name}</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary select-cat-btn" data-cat-id="${cat.id}" data-cat-name="${cat.name}">انتخاب</button>
+                    `;
+                    categoryModalList.appendChild(li);
+                });
+                catCurrentPage = data.current_page;
+                catLastPage = data.last_page;
+                catPageInfo.textContent = catCurrentPage;
+                prevCatPageBtn.disabled = catCurrentPage <= 1;
+                nextCatPageBtn.disabled = catCurrentPage >= catLastPage;
+            });
+    }
+
+    if(addCategoryBtn && addCategoryModal){
+        addCategoryBtn.addEventListener('click', function() {
+            newCategoryInput.value = '';
+            fetchCategoryPage(1);
+            $('#addCategoryModal').modal('show');
+        });
+    }
+
+    addCategoryForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        let name = newCategoryInput.value.trim();
+        if(!name) return;
+        fetch('/categories', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify({ name })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data && data.id && data.name){
+                // به سلکت اصلی اضافه و انتخاب شود
+                let opt = document.createElement('option');
+                opt.value = data.id;
+                opt.text = data.name;
+                categorySelect.appendChild(opt);
+                categorySelect.value = data.id;
+                fetchCategoryPage(catCurrentPage);
+                newCategoryInput.value = '';
+            }else{
+                alert('خطا در ثبت دسته‌بندی!');
+            }
+        });
+    });
+
+    prevCatPageBtn.addEventListener('click', function(){
+        if(catCurrentPage > 1) fetchCategoryPage(catCurrentPage - 1);
+    });
+    nextCatPageBtn.addEventListener('click', function(){
+        if(catCurrentPage < catLastPage) fetchCategoryPage(catCurrentPage + 1);
+    });
+
+    categoryModalList.addEventListener('click', function(e){
+        if(e.target.classList.contains('select-cat-btn')){
+            let catId = e.target.getAttribute('data-cat-id');
+            let catName = e.target.getAttribute('data-cat-name');
+            // افزودن به سلکت اگر نبود
+            let exists = false;
+            for(let i=0; i<categorySelect.options.length; i++) {
+                if(categorySelect.options[i].value == catId) exists = true;
+            }
+            if(!exists){
+                let opt = document.createElement('option');
+                opt.value = catId;
+                opt.text = catName;
+                categorySelect.appendChild(opt);
+            }
+            categorySelect.value = catId;
+            $('#addCategoryModal').modal('hide');
+        }
+    });
 });
 </script>
 @endsection
