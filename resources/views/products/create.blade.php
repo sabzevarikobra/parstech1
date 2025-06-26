@@ -175,15 +175,21 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-4 mt-3">
+                        <div class="col-md-6">
                             <label class="form-label">برند</label>
-                            <select name="brand_id" class="form-select">
-                                <option value="">بدون برند</option>
-                                @foreach($brands as $brand)
-                                    <option value="{{ $brand->id }}" @if(old('brand_id')==$brand->id) selected @endif>{{ $brand->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="input-group">
+                                <select name="brand_id" class="form-select" id="brand-select">
+                                    <option value="">بدون برند</option>
+                                    @foreach($brands as $brand)
+                                        <option value="{{ $brand->id }}" @if(old('brand_id')==$brand->id) selected @endif>{{ $brand->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addBrandModal">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
+                    </div>
                         <div class="col-md-4 mt-3">
                             <label class="form-label">وزن (گرم)</label>
                             <input type="number" name="weight" class="form-control" value="{{ old('weight') }}">
@@ -305,6 +311,36 @@
                         <input type="text" name="description" id="category-desc-input" class="form-control">
                     </div>
                     <div class="alert alert-danger d-none" id="category-modal-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">ذخیره</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL افزودن برند --}}
+<div class="modal fade" id="addBrandModal" tabindex="-1" aria-labelledby="addBrandModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="add-brand-form" autocomplete="off" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addBrandModalLabel"><i class="fas fa-plus"></i> افزودن برند جدید</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">نام برند <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="brand-name-input" class="form-control" required>
+                        <div class="invalid-feedback" id="brand-name-error"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">تصویر برند (اختیاری)</label>
+                        <input type="file" name="image" id="brand-image-input" class="form-control" accept="image/*">
+                    </div>
+                    <div class="alert alert-danger d-none" id="brand-modal-error"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-success">ذخیره</button>
@@ -536,6 +572,67 @@
             errorDiv.classList.remove('d-none');
         });
     });
+
+    // افزودن برند جدید با AJAX
+    document.getElementById('add-brand-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        let name = document.getElementById('brand-name-input').value.trim();
+        let image = document.getElementById('brand-image-input').files[0];
+        let errorDiv = document.getElementById('brand-modal-error');
+        let nameErrorDiv = document.getElementById('brand-name-error');
+        errorDiv.classList.add('d-none'); nameErrorDiv.textContent = '';
+        document.getElementById('brand-name-input').classList.remove('is-invalid');
+        if (!name) {
+            nameErrorDiv.textContent = 'نام برند الزامی است.';
+            document.getElementById('brand-name-input').classList.add('is-invalid');
+            return;
+        }
+        let formData = new FormData();
+        formData.append('name', name);
+        if (image) formData.append('image', image);
+
+        fetch("{{ route('brands.store') }}", {
+            method: "POST",
+            headers: { "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content },
+            body: formData
+        })
+        .then(async res => {
+            if (res.status === 422) {
+                const data = await res.json();
+                if (data.errors && data.errors.name && data.errors.name[0].includes('unique')) {
+                    nameErrorDiv.textContent = 'این نام برند قبلاً ثبت شده است.';
+                    document.getElementById('brand-name-input').classList.add('is-invalid');
+                } else if (data.errors) {
+                    errorDiv.textContent = Object.values(data.errors).map(arr => arr.join('، ')).join('، ');
+                    errorDiv.classList.remove('d-none');
+                } else {
+                    errorDiv.textContent = 'خطای اعتبارسنجی!';
+                    errorDiv.classList.remove('d-none');
+                }
+                return;
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (!data || data.errors) return;
+            if (data.id && data.name) {
+                let option = document.createElement('option');
+                option.value = data.id;
+                option.text = data.name;
+                option.selected = true;
+                document.getElementById('brand-select').appendChild(option);
+
+                document.getElementById('brand-name-input').value = '';
+                document.getElementById('brand-image-input').value = '';
+                bootstrap.Modal.getInstance(document.getElementById('addBrandModal')).hide();
+            }
+        })
+        .catch(() => {
+            errorDiv.textContent = 'خطا در ارسال داده!';
+            errorDiv.classList.remove('d-none');
+        });
     });
+
+});
     </script>
 @endsection
