@@ -22,12 +22,18 @@ class ProductController extends Controller
     }
 
     /**
-     * نمایش فرم افزودن محصول جدید
+     * فرم افزودن محصول جدید
      */
     public function create()
     {
-        $lastProduct = Product::orderBy('id', 'desc')->first();
-        $default_code = $lastProduct ? str_pad($lastProduct->id + 1, 4, '0', STR_PAD_LEFT) : '0001';
+        // پیدا کردن آخرین کد اتوماتیک product-XXX
+        $lastAuto = Product::where('code', 'like', 'product-%')->orderBy('id', 'desc')->first();
+        $nextNum = 1;
+        if ($lastAuto && preg_match('/product-(\d+)/', $lastAuto->code, $m)) {
+            $nextNum = intval($m[1]) + 1;
+        }
+        $default_code = 'product-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
         $categories = Category::where('category_type', 'product')->get();
         $brands = Brand::all();
         $units = Unit::all();
@@ -44,13 +50,13 @@ class ProductController extends Controller
             'name'        => 'required|string|max:255',
             'code'        => 'required|string|max:255|unique:products,code',
             'category_id' => 'required|exists:categories,id',
+            'sell_price'  => 'required|numeric',
+            'min_stock'   => 'required|numeric|min:1',
             'brand_id'    => 'nullable|exists:brands,id',
             'unit'        => 'nullable|string|max:255',
             'stock'       => 'nullable|numeric',
-            'min_stock'   => 'nullable|numeric',
             'weight'      => 'nullable|numeric',
             'buy_price'   => 'nullable|numeric',
-            'sell_price'  => 'nullable|numeric',
             'discount'    => 'nullable|numeric',
             'barcode'     => 'nullable|string|max:255',
             'store_barcode' => 'nullable|string|max:255',
@@ -72,11 +78,29 @@ class ProductController extends Controller
             $data['video'] = $request->file('video')->store('products/videos', 'public');
         }
         if (!isset($data['stock'])) $data['stock'] = 0;
-        if (!isset($data['min_stock'])) $data['min_stock'] = 0;
+        if (!isset($data['min_stock'])) $data['min_stock'] = 1;
+
+        // اگر کد کالا به فرمت product-XXX بود، آخرین شماره را به روز کن
+        if (preg_match('/^product-(\d{3,})$/', $data['code'])) {
+            // هیچ کاری نیاز نیست، شمارنده در create محاسبه می‌شود
+        }
 
         $product = Product::create($data);
 
-        // ----- ذخیره سهم سهامداران -----
+        // ذخیره گالری تصاویر اگر ارسال شده
+        if ($request->has('gallery')) {
+            $gallery = $request->input('gallery');
+            $product->gallery = is_array($gallery) ? $gallery : explode(',', $gallery);
+            $product->save();
+        }
+
+        // ذخیره ویژگی‌ها اگر ارسال شده
+        if ($request->has('attributes')) {
+            $product->attributes = $request->input('attributes');
+            $product->save();
+        }
+
+        // ذخیره سهم سهامداران
         if ($request->has('shareholder_ids')) {
             $syncData = [];
             $percents = $request->input('shareholder_percents', []);
@@ -87,11 +111,9 @@ class ProductController extends Controller
                 $syncData[$id] = ['percent' => $percent];
                 $totalPercent += $percent;
             }
-            // اگر مجموع درصد کمتر از 100 بود و فقط یک نفر انتخاب شده، کل درصد را به او بده
             if (count($ids) === 1) {
                 $syncData[$ids[0]] = ['percent' => 100];
             }
-            // اگر مجموع درصد کمتر از 100 و چند نفر انتخاب شده بودند، بین‌شان تقسیم کن
             elseif (count($ids) > 1 && $totalPercent < 100) {
                 $remained = 100 - $totalPercent;
                 $extra = $remained / count($ids);
@@ -118,7 +140,7 @@ class ProductController extends Controller
     }
 
     /**
-     * نمایش فرم ویرایش محصول
+     * فرم ویرایش محصول
      */
     public function edit($id)
     {
@@ -141,13 +163,13 @@ class ProductController extends Controller
             'name'        => 'required|string|max:255',
             'code'        => 'required|string|max:255|unique:products,code,' . $product->id,
             'category_id' => 'required|exists:categories,id',
+            'sell_price'  => 'required|numeric',
+            'min_stock'   => 'required|numeric|min:1',
             'brand_id'    => 'nullable|exists:brands,id',
             'unit'        => 'nullable|string|max:255',
             'stock'       => 'nullable|numeric',
-            'min_stock'   => 'nullable|numeric',
             'weight'      => 'nullable|numeric',
             'buy_price'   => 'nullable|numeric',
-            'sell_price'  => 'nullable|numeric',
             'discount'    => 'nullable|numeric',
             'barcode'     => 'nullable|string|max:255',
             'store_barcode' => 'nullable|string|max:255',
@@ -169,9 +191,25 @@ class ProductController extends Controller
             $data['video'] = $request->file('video')->store('products/videos', 'public');
         }
 
+        if (!isset($data['stock'])) $data['stock'] = 0;
+        if (!isset($data['min_stock'])) $data['min_stock'] = 1;
+
         $product->update($data);
 
-        // ----- بروزرسانی سهم سهامداران -----
+        // گالری تصاویر
+        if ($request->has('gallery')) {
+            $gallery = $request->input('gallery');
+            $product->gallery = is_array($gallery) ? $gallery : explode(',', $gallery);
+            $product->save();
+        }
+
+        // ویژگی‌ها
+        if ($request->has('attributes')) {
+            $product->attributes = $request->input('attributes');
+            $product->save();
+        }
+
+        // بروزرسانی سهم سهامداران
         if ($request->has('shareholder_ids')) {
             $syncData = [];
             $percents = $request->input('shareholder_percents', []);
@@ -282,7 +320,7 @@ class ProductController extends Controller
                 'code' => $service->service_code,
                 'name' => $service->title,
                 'image' => null,
-                'stock' => 1, // خدمات همیشه 1 - فقط جهت سازگاری
+                'stock' => 1,
                 'sell_price' => $service->price,
                 'category' => $service->category ? $service->category->name : '-',
                 'unit' => $service->unit ?? '-',
