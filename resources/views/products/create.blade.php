@@ -296,6 +296,7 @@
                     <div class="mb-3">
                         <label class="form-label">نام دسته‌بندی <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="category-name-input" class="form-control" required>
+                        <div class="invalid-feedback" id="category-name-error"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">دسته والد</label>
@@ -506,132 +507,134 @@
 
         // افزودن دسته‌بندی جدید با AJAX
         document.getElementById('add-category-form').addEventListener('submit', function (e) {
-        e.preventDefault();
-        let name = document.getElementById('category-name-input').value.trim();
-        let parent_id = document.getElementById('parent-category-select').value;
-        let desc = document.getElementById('category-desc-input').value.trim();
-        let errorDiv = document.getElementById('category-modal-error');
-        errorDiv.classList.add('d-none');
-        if (!name) {
-            errorDiv.textContent = 'نام دسته‌بندی الزامی است.';
-            errorDiv.classList.remove('d-none');
-            return;
-        }
-        fetch("{{ route('categories.store') }}", {
-            method: "POST",
-            headers: {
-                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                name,
-                parent_id,
-                description: desc,
-                category_type: 'product'
-            })
-        })
-        .then(async res => {
-            if (res.status === 422) {
-                const data = await res.json();
-                if (data.errors && data.errors.name && data.errors.name[0].includes('unique')) {
-                    errorDiv.textContent = 'این نام دسته‌بندی قبلاً ثبت شده است.';
-                } else if (data.errors) {
-                    errorDiv.textContent = Object.values(data.errors).map(arr => arr.join('، ')).join('، ');
-                } else {
-                    errorDiv.textContent = 'خطای اعتبارسنجی!';
-                }
-                errorDiv.classList.remove('d-none');
+            e.preventDefault();
+            let name = document.getElementById('category-name-input').value.trim();
+            let parent_id = document.getElementById('parent-category-select').value;
+            let desc = document.getElementById('category-desc-input').value.trim();
+            let errorDiv = document.getElementById('category-modal-error');
+            let nameErrorDiv = document.getElementById('category-name-error');
+            errorDiv.classList.add('d-none'); nameErrorDiv.textContent = '';
+            document.getElementById('category-name-input').classList.remove('is-invalid');
+            if (!name) {
+                nameErrorDiv.textContent = 'نام دسته‌بندی الزامی است.';
+                document.getElementById('category-name-input').classList.add('is-invalid');
                 return;
             }
-            return res.json();
-        })
-        .then(data => {
-            if (!data || data.errors) return;
-            if (data.id && data.name) {
-                // افزودن دسته‌بندی به سلکت فرم اصلی و والد
-                let option = document.createElement('option');
-                option.value = data.id;
-                option.text = data.name;
-                option.selected = true;
-                document.getElementById('category-select').appendChild(option);
+            fetch("{{ route('categories.store') }}", {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name,
+                    parent_id,
+                    description: desc,
+                    category_type: 'product'
+                })
+            })
+            .then(async res => {
+                if (res.status === 422) {
+                    const data = await res.json();
+                    if (data.errors && data.errors.name && data.errors.name[0].includes('unique')) {
+                        nameErrorDiv.textContent = 'این نام دسته‌بندی قبلاً ثبت شده است.';
+                        document.getElementById('category-name-input').classList.add('is-invalid');
+                    } else if (data.errors) {
+                        errorDiv.textContent = Object.values(data.errors).map(arr => arr.join('، ')).join('، ');
+                        errorDiv.classList.remove('d-none');
+                    } else {
+                        errorDiv.textContent = 'خطای اعتبارسنجی!';
+                        errorDiv.classList.remove('d-none');
+                    }
+                    return;
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (!data || data.errors) return;
+                if (data.id && data.name) {
+                    let option = document.createElement('option');
+                    option.value = data.id;
+                    option.text = data.name;
+                    option.selected = true;
+                    document.getElementById('category-select').appendChild(option);
 
-                let option2 = document.createElement('option');
-                option2.value = data.id;
-                option2.text = data.name;
-                document.getElementById('parent-category-select').appendChild(option2);
+                    let option2 = document.createElement('option');
+                    option2.value = data.id;
+                    option2.text = data.name;
+                    document.getElementById('parent-category-select').appendChild(option2);
 
-                // پاک کردن فرم مودال و بستن آن
-                document.getElementById('category-name-input').value = '';
-                document.getElementById('category-desc-input').value = '';
-                document.getElementById('parent-category-select').value = '';
-                bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
-            }
-        })
-        .catch(() => {
-            errorDiv.textContent = 'خطا در ارسال داده!';
-            errorDiv.classList.remove('d-none');
+                    document.getElementById('category-name-input').value = '';
+                    document.getElementById('category-desc-input').value = '';
+                    document.getElementById('parent-category-select').value = '';
+                    bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
+                }
+            })
+            .catch(() => {
+                errorDiv.textContent = 'خطا در ارسال داده!';
+                errorDiv.classList.remove('d-none');
+            });
         });
-    });
 
     // افزودن برند جدید با AJAX
     document.getElementById('add-brand-form').addEventListener('submit', function (e) {
-        e.preventDefault();
-        let name = document.getElementById('brand-name-input').value.trim();
-        let image = document.getElementById('brand-image-input').files[0];
-        let errorDiv = document.getElementById('brand-modal-error');
-        let nameErrorDiv = document.getElementById('brand-name-error');
-        errorDiv.classList.add('d-none'); nameErrorDiv.textContent = '';
-        document.getElementById('brand-name-input').classList.remove('is-invalid');
-        if (!name) {
-            nameErrorDiv.textContent = 'نام برند الزامی است.';
-            document.getElementById('brand-name-input').classList.add('is-invalid');
-            return;
-        }
-        let formData = new FormData();
-        formData.append('name', name);
-        if (image) formData.append('image', image);
-
-        fetch("{{ route('brands.store') }}", {
-            method: "POST",
-            headers: { "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content },
-            body: formData
-        })
-        .then(async res => {
-            if (res.status === 422) {
-                const data = await res.json();
-                if (data.errors && data.errors.name && data.errors.name[0].includes('unique')) {
-                    nameErrorDiv.textContent = 'این نام برند قبلاً ثبت شده است.';
-                    document.getElementById('brand-name-input').classList.add('is-invalid');
-                } else if (data.errors) {
-                    errorDiv.textContent = Object.values(data.errors).map(arr => arr.join('، ')).join('، ');
-                    errorDiv.classList.remove('d-none');
-                } else {
-                    errorDiv.textContent = 'خطای اعتبارسنجی!';
-                    errorDiv.classList.remove('d-none');
-                }
+            e.preventDefault();
+            let name = document.getElementById('brand-name-input').value.trim();
+            let image = document.getElementById('brand-image-input').files[0];
+            let errorDiv = document.getElementById('brand-modal-error');
+            let nameErrorDiv = document.getElementById('brand-name-error');
+            errorDiv.classList.add('d-none'); nameErrorDiv.textContent = '';
+            document.getElementById('brand-name-input').classList.remove('is-invalid');
+            if (!name) {
+                nameErrorDiv.textContent = 'نام برند الزامی است.';
+                document.getElementById('brand-name-input').classList.add('is-invalid');
                 return;
             }
-            return res.json();
-        })
-        .then(data => {
-            if (!data || data.errors) return;
-            if (data.id && data.name) {
-                let option = document.createElement('option');
-                option.value = data.id;
-                option.text = data.name;
-                option.selected = true;
-                document.getElementById('brand-select').appendChild(option);
+            let formData = new FormData();
+            formData.append('name', name);
+            if (image) formData.append('image', image);
 
-                document.getElementById('brand-name-input').value = '';
-                document.getElementById('brand-image-input').value = '';
-                bootstrap.Modal.getInstance(document.getElementById('addBrandModal')).hide();
-            }
-        })
-        .catch(() => {
-            errorDiv.textContent = 'خطا در ارسال داده!';
-            errorDiv.classList.remove('d-none');
+            fetch("{{ route('brands.store') }}", {
+                method: "POST",
+                headers: { "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content },
+                body: formData
+            })
+            .then(async res => {
+                if (res.status === 422) {
+                    const data = await res.json();
+                    if (data.errors && data.errors.name && data.errors.name[0].includes('unique')) {
+                        nameErrorDiv.textContent = 'این نام برند قبلاً ثبت شده است.';
+                        document.getElementById('brand-name-input').classList.add('is-invalid');
+                    } else if (data.errors) {
+                        errorDiv.textContent = Object.values(data.errors).map(arr => arr.join('، ')).join('، ');
+                        errorDiv.classList.remove('d-none');
+                    } else {
+                        errorDiv.textContent = 'خطای اعتبارسنجی!';
+                        errorDiv.classList.remove('d-none');
+                    }
+                    return;
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (!data || data.errors) return;
+                if (data.id && data.name) {
+                    let option = document.createElement('option');
+                    option.value = data.id;
+                    option.text = data.name;
+                    option.selected = true;
+                    document.getElementById('brand-select').appendChild(option);
+
+                    document.getElementById('brand-name-input').value = '';
+                    document.getElementById('brand-image-input').value = '';
+                    bootstrap.Modal.getInstance(document.getElementById('addBrandModal')).hide();
+                }
+            })
+            .catch(() => {
+                errorDiv.textContent = 'خطا در ارسال داده!';
+                errorDiv.classList.remove('d-none');
+            });
         });
-    });
 
 });
     </script>

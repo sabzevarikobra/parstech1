@@ -17,8 +17,10 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $products = Product::with(['category', 'brand'])->orderBy('id', 'desc')->paginate(20);
-        return view('products.index', compact('products'));
+        $products = Product::with(['category', 'brand', 'shareholders'])->orderBy('id', 'desc')->paginate(20);
+        $categories = Category::where('category_type', 'product')->get();
+        $brands = Brand::all();
+        return view('products.index', compact('products', 'categories', 'brands'));
     }
 
     /**
@@ -40,7 +42,11 @@ class ProductController extends Controller
         $shareholders = Person::where('type', 'shareholder')->get();
         return view('products.create', compact('default_code', 'categories', 'brands', 'units', 'shareholders'));
     }
-
+    public function show($id)
+    {
+        $product = Product::with(['category', 'brand', 'shareholders'])->findOrFail($id);
+        return view('products.show', compact('product'));
+    }
     /**
      * ذخیره محصول جدید
      */
