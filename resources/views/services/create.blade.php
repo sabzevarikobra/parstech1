@@ -456,6 +456,8 @@ document.addEventListener('DOMContentLoaded', function () {
             $('#addCategoryModal').modal('hide');
         }
     });
+
+    
 });
 </script>
 @endsection

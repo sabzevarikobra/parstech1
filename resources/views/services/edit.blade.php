@@ -21,6 +21,17 @@
             min-width: 100px;
             display: inline-block;
         }
+        /* سهامداران: استایل مشابه محصول */
+        .shareholder-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #2563eb;
+        }
+        .input-group .input-group-prepend,
+        .input-group .input-group-append {
+            display: flex;
+            align-items: center;
+        }
     </style>
 @endsection
 
@@ -86,6 +97,8 @@
                             <input type="file" name="image" id="image" class="form-control" accept="image/*">
                             @if($service->image)
                                 <img src="{{ asset('storage/'.$service->image) }}" alt="پیش نمایش" style="max-width:150px; margin-top:10px;">
+                            @else
+                                <img id="image_preview" class="preview-img" src="#" alt="پیش نمایش" style="display:none; max-width:150px; margin-top:10px;">
                             @endif
                         </div>
 
@@ -152,29 +165,44 @@
                             </label>
                         </div>
 
-                        {{-- بخش سهامداران --}}
-                        <div class="mb-4">
-                            <label class="form-label"><b>سهامداران و درصد سهم هرکدام</b></label>
-                            <div class="row">
-                                @foreach($shareholders as $shareholder)
-                                <div class="col-md-4 mb-2">
-                                    <div class="input-group">
-                                        <div class="input-group-text" style="min-width:120px">{{ $shareholder->full_name }}</div>
-                                        <input type="number"
-                                               class="form-control"
-                                               name="shareholders[{{ $shareholder->id }}]"
-                                               min="0"
-                                               max="100"
-                                               step="0.01"
-                                               value="{{ old('shareholders.'.$shareholder->id, $service->shareholders->firstWhere('id', $shareholder->id)?->pivot->percent ?? '') }}"
-                                               placeholder="درصد سهم">
-                                        <span class="input-group-text">%</span>
+                        {{-- بخش سهامداران پیشرفته --}}
+                        @foreach($shareholders as $shareholder)
+                        <div class="col-md-4 mb-2">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <div class="input-group-text">
+                                        <input type="checkbox"
+                                            name="shareholder_ids[]"
+                                            value="{{ $shareholder->id }}"
+                                            id="sh-{{ $shareholder->id }}"
+                                            class="shareholder-checkbox"
+                                            @if(
+                                                old('shareholder_ids') ?
+                                                    in_array($shareholder->id, old('shareholder_ids', [])) :
+                                                    ($service->shareholders->contains($shareholder->id))
+                                            ) checked @endif
+                                        >
                                     </div>
                                 </div>
-                                @endforeach
+                                <input type="number"
+                                    name="shareholder_percents[{{ $shareholder->id }}]"
+                                    id="percent-{{ $shareholder->id }}"
+                                    class="form-control shareholder-percent"
+                                    min="0" max="100" step="0.01"
+                                    placeholder="درصد سهم"
+                                    value="{{ old('shareholder_percents.'.$shareholder->id, $service->shareholders->firstWhere('id', $shareholder->id)?->pivot->percent ?? '') }}"
+                                    @if(
+                                        old('shareholder_ids') ?
+                                            !in_array($shareholder->id, old('shareholder_ids', [])) :
+                                            (!$service->shareholders->contains($shareholder->id))
+                                    ) disabled @endif
+                                >
+                                <div class="input-group-append">
+                                    <span class="input-group-text">{{ $shareholder->full_name }}</span>
+                                </div>
                             </div>
-                            <small class="text-muted">درصد سهام هرکدام را وارد کنید. اگر سهامداری در این خدمت سهم ندارد، مقدار را خالی بگذارید یا صفر وارد کنید.</small>
                         </div>
+                    @endforeach
 
                         <div class="d-flex justify-content-end">
                             <button type="submit" class="btn btn-success px-4">
@@ -253,8 +281,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // پیش‌نمایش تصویر جدید در صورت انتخاب
     const imageInput = document.getElementById('image');
-    const imagePreview = document.getElementById('image_preview');
-    if(imageInput && imagePreview){
+    let imagePreview = document.getElementById('image_preview');
+    if(!imagePreview){
+        imagePreview = document.createElement('img');
+        imagePreview.id = 'image_preview';
+        imagePreview.className = 'preview-img';
+        imagePreview.style.display = 'none';
+        imageInput.parentNode.appendChild(imagePreview);
+    }
+    if(imageInput){
         imageInput.addEventListener('change', function() {
             if (imageInput.files && imageInput.files[0]) {
                 var reader = new FileReader();
@@ -266,6 +301,62 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // سهامداران: فعال/غیرفعال کردن ورودی درصد + منطق درصدها مثل محصولات
+    document.querySelectorAll('.shareholder-checkbox').forEach(ch => {
+        ch.addEventListener('change', function(){
+            let percentInput = document.getElementById('percent-' + this.value);
+            percentInput.disabled = !this.checked;
+            if (!this.checked) percentInput.value = '';
+            updatePercents();
+        });
+    });
+
+    // منطق درصد سهم‌ها
+    let checkboxes = document.querySelectorAll('.shareholder-checkbox');
+    let percents = document.querySelectorAll('.shareholder-percent');
+    let warning = document.getElementById('percent-warning');
+    function updatePercents() {
+        let checked = [];
+        checkboxes.forEach((ch, idx) => {
+            let percentInput = document.getElementById('percent-' + ch.value);
+            if (ch.checked) checked.push(ch.value);
+            percentInput.disabled = !ch.checked;
+            if (!ch.checked) percentInput.value = '';
+        });
+        if (checked.length === 0) {
+            percents.forEach(inp => inp.value = '');
+            warning.style.display = 'none';
+        } else if (checked.length === 1) {
+            percents.forEach(inp => inp.value = '');
+            document.getElementById('percent-' + checked[0]).value = 100;
+            warning.innerText = '';
+            warning.style.display = 'none';
+        } else {
+            let allEmpty = true;
+            checked.forEach(id => {
+                let val = document.getElementById('percent-' + id).value;
+                if (val && parseFloat(val) > 0) allEmpty = false;
+            });
+            if (allEmpty) {
+                let share = (100 / checked.length).toFixed(2);
+                checked.forEach(id => {
+                    document.getElementById('percent-' + id).value = share;
+                });
+            }
+            let sum = checked.reduce((acc, id) => acc + parseFloat(document.getElementById('percent-' + id).value || 0), 0);
+            if (sum !== 100 && !allEmpty) {
+                warning.innerText = 'مجموع درصدها باید ۱۰۰ باشد. مجموع فعلی: ' + sum;
+                warning.style.display = 'block';
+            } else {
+                warning.innerText = '';
+                warning.style.display = 'none';
+            }
+        }
+    }
+    checkboxes.forEach(ch => { ch.addEventListener('change', updatePercents); });
+    percents.forEach(inp => { inp.addEventListener('input', updatePercents); });
+    updatePercents();
 });
 </script>
 @endsection

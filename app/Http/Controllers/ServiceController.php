@@ -33,6 +33,24 @@ class ServiceController extends Controller
         return view('services.index', compact('services', 'serviceCategories'));
     }
 
+
+    public function show($id)
+    {
+        $service = \App\Models\Service::with(['category', 'shareholders'])->findOrFail($id);
+
+        // اگر ویژگی gallery و attributes داری، اینجا به array تبدیل کن
+        if (is_string($service->gallery)) {
+            $service->gallery = json_decode($service->gallery, true) ?? [];
+        }
+        if (is_string($service->attributes)) {
+            $service->attributes = json_decode($service->attributes, true) ?? [];
+        }
+
+        // لیست دسته‌بندی‌ها (اگر نیاز است برای نمایش)
+        $serviceCategories = \App\Models\Category::where('category_type', 'service')->get();
+
+        return view('services.show', compact('service', 'serviceCategories'));
+    }
     public function ajaxList(Request $request)
     {
         $query = Service::with('category')->where('is_active', 1);
@@ -133,10 +151,14 @@ class ServiceController extends Controller
      */
     public function edit($id)
     {
-        $service = Service::findOrFail($id);
-        $serviceCategories = Category::where('category_type', 'service')->get();
-        $units = Unit::orderBy('title')->get();
-        return view('services.edit', compact('service', 'serviceCategories', 'units'));
+        $service = \App\Models\Service::with('shareholders')->findOrFail($id);
+        $serviceCategories = \App\Models\Category::where('category_type', 'service')->get();
+        $units = \App\Models\Unit::all();
+
+        // فقط اشخاصی که سهامدار هستند
+        $shareholders = \App\Models\Person::where('type', 'shareholder')->get();
+
+        return view('services.edit', compact('service', 'serviceCategories', 'units', 'shareholders'));
     }
 
     /**

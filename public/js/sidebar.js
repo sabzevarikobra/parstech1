@@ -105,24 +105,44 @@ document.addEventListener('click', (e) => {
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-        var toggle = document.getElementById('userMenuToggle');
-        var menu = document.getElementById('userMenuDropdown');
+        const toggle = document.getElementById('userMenuToggle');
+        const menu = document.getElementById('userMenuDropdown');
         if (toggle && menu) {
+            // کلاس position:fixed به منو بده
+            menu.classList.add('user-menu-fixed');
+            function openMenu() {
+                // مختصات دکمه را پیدا کن
+                const rect = toggle.getBoundingClientRect();
+                // موقعیت منو درست زیر دکمه قرار بگیرد
+                menu.style.display = 'block';
+                menu.style.top = (window.scrollY + rect.bottom + 6) + 'px';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+                toggle.classList.add('open');
+            }
+            function closeMenu() {
+                menu.style.display = 'none';
+                toggle.classList.remove('open');
+            }
             toggle.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (menu.style.display === 'block') {
-                    menu.style.display = 'none';
-                    toggle.classList.remove('open');
+                    closeMenu();
                 } else {
-                    menu.style.display = 'block';
-                    toggle.classList.add('open');
+                    openMenu();
                 }
             });
+            // اگر بیرون منو کلیک شد، منو بسته شود
             document.addEventListener('click', function(e) {
                 if (!toggle.contains(e.target) && !menu.contains(e.target)) {
-                    menu.style.display = 'none';
-                    toggle.classList.remove('open');
+                    closeMenu();
                 }
+            });
+            // موقع اسکرول یا resize موقعیت منو را رفرش کن
+            window.addEventListener('scroll', function(){
+                if(menu.style.display === 'block') openMenu();
+            });
+            window.addEventListener('resize', function(){
+                if(menu.style.display === 'block') openMenu();
             });
         }
     });

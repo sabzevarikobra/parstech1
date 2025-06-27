@@ -60,4 +60,15 @@ class Service extends Model
 
         return $product;
     }
+
+    public function shareholders()
+    {
+        return $this->belongsToMany(
+            \App\Models\Person::class,
+            'service_shareholder',
+            'service_id',
+            'shareholder_id' // اگر ستون واسط همین نام را دارد!
+        )->withPivot('percent');
+    }
+
 }
