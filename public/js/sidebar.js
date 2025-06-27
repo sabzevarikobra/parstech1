@@ -35,14 +35,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // بستن زیرمنوها با کلیک خارج از آنها
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.has-submenu')) {
+// جدید: فقط اگر روی فضای خالی سایدبار (نه روی آیتم منو) یا روی overlay کلیک شد، زیرمنوها را ببند.
+// و فقط در حالت موبایل (زیر 900px) این کار را انجام بده.
+document.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('sidebar');
+    const isMobile = window.innerWidth < 900;
+    if (isMobile) {
+        // اگر کلیک روی سایدبار یا overlay نبود، زیرمنوها را ببند
+        if (!e.target.closest('#sidebar') && !e.target.closest('#sidebarOverlay')) {
             submenuItems.forEach(item => {
                 item.classList.remove('open');
             });
+            // سایدبار را هم ببند (اختیاری)
+            sidebar.classList.add('collapsed');
         }
-    });
+    }
+});
 
     // نمایش منوی فعال
     const currentPath = window.location.pathname;
@@ -93,6 +101,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.altKey && e.key === 's') {
             sidebar.classList.toggle('collapsed');
             localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var toggle = document.getElementById('userMenuToggle');
+        var menu = document.getElementById('userMenuDropdown');
+        if (toggle && menu) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (menu.style.display === 'block') {
+                    menu.style.display = 'none';
+                    toggle.classList.remove('open');
+                } else {
+                    menu.style.display = 'block';
+                    toggle.classList.add('open');
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+                    menu.style.display = 'none';
+                    toggle.classList.remove('open');
+                }
+            });
         }
     });
 });
