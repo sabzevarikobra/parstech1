@@ -12,19 +12,51 @@ use App\Models\CustomerPurchase;
 
 class PersonController extends Controller
 {
+
+    public function getCities($province_id)
+    {
+        try {
+            $cities = \App\Models\City::where('province_id', $province_id)
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get()
+                ->map(function($city) {
+                    return [
+                        'id' => $city->id,
+                        'text' => $city->name
+                    ];
+                });
+
+            return response()->json($cities);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'خطا در دریافت شهرها'], 500);
+        }
+    }
     public function nextCode()
     {
-        // فقط کدهایی که با persons=- شروع می‌شوند را درنظر بگیر
-        $lastPerson = Person::where('accounting_code', 'like', 'persons=%')
-            ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS UNSIGNED) DESC')
-            ->first();
+        try {
+            // فقط کدهایی که با persons=- شروع می‌شوند را درنظر بگیر
+            $lastPerson = Person::where('accounting_code', 'like', 'persons=%')
+                ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS UNSIGNED) DESC')
+                ->first();
 
-        if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
-            $nextNumber = intval($matches[1]) + 1;
-        } else {
-            $nextNumber = 1001;
+            if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
+                $nextNumber = intval($matches[1]) + 1;
+            } else {
+                $nextNumber = 1001;
+            }
+
+            return response()->json([
+                'success' => true,
+                'code' => 'persons=-' . $nextNumber
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطا در تولید کد حسابداری',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        return response()->json(['code' => 'persons=-' . $nextNumber]);
     }
 
     public function index()
@@ -107,7 +139,7 @@ class PersonController extends Controller
         try {
             DB::beginTransaction();
 
-            // اگر کد خودکار فعال است و کاربر دستی کد نداده، دوباره از دیتابیس بگیر تا تداخل ایجاد نشود
+            // اگر کد خودکار فعال است و کاربر دستی کد نداده، دوباره از دیتابیس بگیر
             if ($request->input('auto_code', '1') === '1') {
                 $lastPerson = Person::where('accounting_code', 'like', 'persons=%')
                     ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS UNSIGNED) DESC')
@@ -118,14 +150,10 @@ class PersonController extends Controller
                 } else {
                     $nextNumber = 1001;
                 }
-                $validated['accounting_code'] = 'persons=-' . $nextNumber;
+                $request->merge(['accounting_code' => 'persons=-' . $nextNumber]);
             }
-            // اگر کاربر دستی کد داده همان مقدار ذخیره شود
 
-            $person = Person::create(array_merge(
-                $validated,
-                ['accounting_code' => $validated['accounting_code']]
-            ));
+            $person = Person::create($request->all());
 
             // ذخیره حساب‌های بانکی (اگر ارسال شده)
             if ($request->has('bank_accounts')) {
@@ -150,7 +178,7 @@ class PersonController extends Controller
             return redirect()->route('persons.index')->with('success', 'شخص جدید با موفقیت ایجاد شد.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'خطا در ثبت اطلاعات: ' . $e->getMessage())->withInput();
+            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
         }
     }
 

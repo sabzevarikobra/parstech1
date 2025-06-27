@@ -1,4 +1,4 @@
-<?php
+999999999999999999999999999999999999999999999999999
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;

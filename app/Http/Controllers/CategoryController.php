@@ -10,7 +10,7 @@ class CategoryController extends Controller
     // لیست دسته‌بندی‌ها با زیر دسته‌ها
     public function index()
     {
-        $categories = Category::with('children')->whereNull('parent_id')->orderBy('name')->get();
+        $categories = \App\Models\Category::with('childrenRecursive')->whereNull('parent_id')->orderBy('name')->get();
         return view('categories.index', compact('categories'));
     }
 
@@ -28,6 +28,11 @@ class CategoryController extends Controller
             'personCategories', 'productCategories', 'serviceCategories',
             'nextPersonCode', 'nextProductCode', 'nextServiceCode'
         ));
+    }
+    public function tableTree()
+    {
+        $categories = \App\Models\Category::with('children.children')->whereNull('parent_id')->orderBy('name')->get();
+        return view('categories.table-tree', compact('categories'));
     }
     public function apiList(Request $request)
     {

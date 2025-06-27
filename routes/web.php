@@ -345,6 +345,10 @@ Route::prefix('sales')->name('sales.')->group(function () {
 Route::get('/api/categories', [CategoryController::class, 'apiList']);
 Route::get('/api/categories', [\App\Http\Controllers\CategoryController::class, 'apiList']);
 
+Route::get('/categories/table-tree', [\App\Http\Controllers\CategoryController::class, 'tableTree'])->name('categories.table-tree');
+
+// اضافه کردن این route
+Route::get('/persons/province/{province}/cities', [PersonController::class, 'getCities'])->name('persons.cities');
 
 
 

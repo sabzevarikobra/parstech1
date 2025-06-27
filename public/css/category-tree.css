@@ -19,6 +19,13 @@
 .category-tree-wrapper {
     padding: 0 1vw;
 }
+.category-tree-children {
+    display: none;
+    transition: all 0.25s;
+}
+.category-tree-children.show {
+    display: block;
+}
 .category-tree-root, .category-tree-children {
     list-style: none;
     margin: 0;
