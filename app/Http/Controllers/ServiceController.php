@@ -17,9 +17,10 @@ class ServiceController extends Controller
      */
     public function create()
     {
-        $serviceCategories = \App\Models\ServiceCategory::all();
+        $serviceCategories = \App\Models\Category::where('category_type', 'service')->get();
         $units = \App\Models\Unit::all();
-        $shareholders = \App\Models\Shareholder::all();
+        $shareholders = \App\Models\Person::where('type', 'shareholder')->get();
+
         return view('services.create', compact('serviceCategories', 'units', 'shareholders'));
     }
 
@@ -107,6 +108,27 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
+        $path = $request->file('image')->store('services', 'public');
+
+            // اعتبارسنجی و ذخیره اطلاعات خدمت
+        $service = new Service($request->all());
+        // ... ذخیره عکس و سایر اطلاعات
+        $service->save();
+
+        // --- اینجا کد مدیریت سهامداران ---
+        if ($request->has('shareholder_ids')) {
+            $shareholderData = [];
+            foreach ($request->input('shareholder_ids', []) as $shId) {
+                $percent = $request->input('shareholder_percents.' . $shId);
+                $shareholderData[$shId] = ['percent' => $percent ?: 0];
+            }
+            $service->shareholders()->sync($shareholderData);
+        } else {
+            $service->shareholders()->detach();
+        }
+     // ریدایرکت یا سایر عملیات
+     return redirect()->route('services.index')->with('success', 'خدمت جدید با موفقیت ثبت شد.');
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'service_code' => 'required|string|max:255|unique:services,service_code',

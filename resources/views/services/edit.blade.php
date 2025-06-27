@@ -167,41 +167,52 @@
 
                         {{-- بخش سهامداران پیشرفته --}}
                         @foreach($shareholders as $shareholder)
-                        <div class="col-md-4 mb-2">
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <div class="input-group-text">
-                                        <input type="checkbox"
-                                            name="shareholder_ids[]"
-                                            value="{{ $shareholder->id }}"
-                                            id="sh-{{ $shareholder->id }}"
-                                            class="shareholder-checkbox"
-                                            @if(
-                                                old('shareholder_ids') ?
-                                                    in_array($shareholder->id, old('shareholder_ids', [])) :
-                                                    ($service->shareholders->contains($shareholder->id))
-                                            ) checked @endif
-                                        >
-                                    </div>
-                                </div>
-                                <input type="number"
-                                    name="shareholder_percents[{{ $shareholder->id }}]"
-                                    id="percent-{{ $shareholder->id }}"
-                                    class="form-control shareholder-percent"
-                                    min="0" max="100" step="0.01"
-                                    placeholder="درصد سهم"
-                                    value="{{ old('shareholder_percents.'.$shareholder->id, $service->shareholders->firstWhere('id', $shareholder->id)?->pivot->percent ?? '') }}"
-                                    @if(
-                                        old('shareholder_ids') ?
-                                            !in_array($shareholder->id, old('shareholder_ids', [])) :
-                                            (!$service->shareholders->contains($shareholder->id))
-                                    ) disabled @endif
-                                >
-                                <div class="input-group-append">
-                                    <span class="input-group-text">{{ $shareholder->full_name }}</span>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="form-section-title">سهامداران و درصد هرکدام</div>
+<div class="mb-4">
+    <div class="alert alert-light border shadow-sm mb-2">
+        <small>
+            اگر هیچ سهامداری انتخاب نشود، سهم خدمت به طور مساوی بین همه سهامداران تقسیم می‌شود.<br>
+            اگر فقط یک نفر انتخاب شود، کل خدمت برای او خواهد بود.<br>
+            اگر چند نفر انتخاب شوند، درصد هرکدام را وارد کنید (مجموع باید ۱۰۰ باشد، اگر خالی ماند بین انتخاب‌شده‌ها تقسیم می‌شود).
+        </small>
+    </div>
+    <div class="row" id="shareholder-list">
+        @foreach($shareholders as $shareholder)
+        <div class="col-md-4 mb-2">
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <div class="input-group-text">
+                        <input type="checkbox"
+                               name="shareholder_ids[]"
+                               value="{{ $shareholder->id }}"
+                               id="sh-{{ $shareholder->id }}"
+                               class="shareholder-checkbox"
+                               @if( old('shareholder_ids') && in_array($shareholder->id, old('shareholder_ids', [])) )
+                                   checked
+                               @endif
+                        >
+                    </div>
+                </div>
+                <input type="number"
+                       name="shareholder_percents[{{ $shareholder->id }}]"
+                       id="percent-{{ $shareholder->id }}"
+                       class="form-control shareholder-percent"
+                       min="0" max="100" step="0.01"
+                       placeholder="درصد سهم"
+                       value="{{ old('shareholder_percents.'.$shareholder->id) }}"
+                       @if( !old('shareholder_ids') || !in_array($shareholder->id, old('shareholder_ids', [])) )
+                           disabled
+                       @endif
+                >
+                <div class="input-group-append">
+                    <span class="input-group-text">{{ $shareholder->full_name }}</span>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    <small class="form-text text-muted" id="percent-warning" style="color:red;display:none"></small>
+</div>
                     @endforeach
 
                         <div class="d-flex justify-content-end">

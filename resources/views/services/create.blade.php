@@ -55,21 +55,6 @@
         box-shadow: 0 2px 8px #23408c22;
         border: 1px solid #e3eafc;
     }
-    .shareholder-label { min-width: 120px; }
-    .btn-gradient {
-        background: linear-gradient(90deg, #23408c 0%, #3b82f6 100%);
-        color: #fff !important;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 30px;
-        font-weight: bold;
-        box-shadow: 0 2px 14px #2563eb22;
-        transition: background 0.2s, box-shadow 0.2s;
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(90deg, #1e2549 0%, #2563eb 100%);
-        box-shadow: 0 4px 16px #23408c33;
-    }
     .form-section-title {
         font-weight: bold;
         font-size: 1.09em;
@@ -83,6 +68,16 @@
     .category-modal-list { min-height: 120px; }
     .pagination { justify-content: center; }
     .modal-backdrop.show { opacity: 0.2; }
+    .shareholder-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: #2563eb;
+    }
+    .input-group .input-group-prepend,
+    .input-group .input-group-append {
+        display: flex;
+        align-items: center;
+    }
     @media (max-width: 700px) {
         .card.service-card { padding: 0.5rem; }
         .service-header { padding: 1rem 1.1rem; font-size: 1.1rem; }
@@ -218,25 +213,45 @@
 
                         <div class="form-section-title">سهامداران و درصد هرکدام</div>
                         <div class="mb-4">
-                            <div class="row">
+                            <div class="alert alert-light border shadow-sm mb-2">
+                                <small>
+                                    اگر هیچ سهامداری انتخاب نشود، سهم خدمت به طور مساوی بین همه سهامداران تقسیم می‌شود.<br>
+                                    اگر فقط یک نفر انتخاب شود، کل خدمت برای او خواهد بود.<br>
+                                    اگر چند نفر انتخاب شوند، درصد هرکدام را وارد کنید (مجموع باید ۱۰۰ باشد، اگر خالی ماند بین انتخاب‌شده‌ها تقسیم می‌شود).
+                                </small>
+                            </div>
+                            <div class="row" id="shareholder-list">
                                 @foreach($shareholders as $shareholder)
-                                <div class="col-md-4 mb-2">
-                                    <div class="input-group">
-                                        <div class="input-group-text shareholder-label">{{ $shareholder->full_name }}</div>
-                                        <input type="number"
-                                               class="form-control"
-                                               name="shareholders[{{ $shareholder->id }}]"
-                                               min="0"
-                                               max="100"
-                                               step="0.01"
-                                               value="{{ old('shareholders.'.$shareholder->id, '') }}"
-                                               placeholder="درصد سهم">
-                                        <span class="input-group-text">%</span>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <div class="input-group-text">
+                                                    <input type="checkbox"
+                                                        name="shareholder_ids[]"
+                                                        value="{{ $shareholder->id }}"
+                                                        id="sh-{{ $shareholder->id }}"
+                                                        class="shareholder-checkbox"
+                                                        @if( old('shareholder_ids') && in_array($shareholder->id, old('shareholder_ids', [])) ) checked @endif
+                                                    >
+                                                </div>
+                                            </div>
+                                            <input type="number"
+                                                name="shareholder_percents[{{ $shareholder->id }}]"
+                                                id="percent-{{ $shareholder->id }}"
+                                                class="form-control shareholder-percent"
+                                                min="0" max="100" step="0.01"
+                                                placeholder="درصد سهم"
+                                                value="{{ old('shareholder_percents.'.$shareholder->id) }}"
+                                                @if( !old('shareholder_ids') || !in_array($shareholder->id, old('shareholder_ids', [])) ) disabled @endif
+                                            >
+                                            <div class="input-group-append">
+                                                <span class="input-group-text">{{ $shareholder->full_name }}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
                                 @endforeach
                             </div>
-                            <small class="text-muted">درصد سهام هرکدام را وارد کنید. اگر سهامداری در این خدمت سهم ندارد، مقدار را خالی بگذارید یا صفر وارد کنید.</small>
+                            <small class="form-text text-muted" id="percent-warning" style="color:red;display:none"></small>
                         </div>
 
                         <div class="d-flex justify-content-end mt-3">
@@ -358,106 +373,61 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // مدیریت دسته‌بندی خدمات (پاپ‌آپ و صفحه‌بندی)
-    const addCategoryBtn = document.getElementById('add-category-btn');
-    const addCategoryModal = document.getElementById('addCategoryModal');
-    const addCategoryForm = document.getElementById('add-category-form');
-    const newCategoryInput = document.getElementById('new-category-name');
-    const categorySelect = document.getElementById('service_category_id');
-    const categoryModalList = document.getElementById('category-modal-list');
-    const prevCatPageBtn = document.getElementById('prev-cat-page');
-    const nextCatPageBtn = document.getElementById('next-cat-page');
-    const catPageInfo = document.getElementById('cat-current-page');
-    let catCurrentPage = 1;
-    let catLastPage = 1;
+    // سهامداران: فعال/غیرفعال کردن ورودی درصد + منطق درصدها مثل محصولات
+    document.querySelectorAll('.shareholder-checkbox').forEach(ch => {
+        ch.addEventListener('change', function(){
+            let percentInput = document.getElementById('percent-' + this.value);
+            percentInput.disabled = !this.checked;
+            if (!this.checked) percentInput.value = '';
+            updatePercents();
+        });
+    });
 
-    function fetchCategoryPage(page = 1) {
-        fetch(`/api/categories?page=${page}&type=service`)
-            .then(res => res.json())
-            .then(data => {
-                categoryModalList.innerHTML = '';
-                data.data.forEach(cat => {
-                    let li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center p-2';
-                    li.innerHTML = `
-                        <span>${cat.name}</span>
-                        <button type="button" class="btn btn-sm btn-outline-primary select-cat-btn" data-cat-id="${cat.id}" data-cat-name="${cat.name}">انتخاب</button>
-                    `;
-                    categoryModalList.appendChild(li);
-                });
-                catCurrentPage = data.current_page;
-                catLastPage = data.last_page;
-                catPageInfo.textContent = catCurrentPage;
-                prevCatPageBtn.disabled = catCurrentPage <= 1;
-                nextCatPageBtn.disabled = catCurrentPage >= catLastPage;
+    // منطق درصد سهم‌ها
+    let checkboxes = document.querySelectorAll('.shareholder-checkbox');
+    let percents = document.querySelectorAll('.shareholder-percent');
+    let warning = document.getElementById('percent-warning');
+    function updatePercents() {
+        let checked = [];
+        checkboxes.forEach((ch, idx) => {
+            let percentInput = document.getElementById('percent-' + ch.value);
+            if (ch.checked) checked.push(ch.value);
+            percentInput.disabled = !ch.checked;
+            if (!ch.checked) percentInput.value = '';
+        });
+        if (checked.length === 0) {
+            percents.forEach(inp => inp.value = '');
+            warning.style.display = 'none';
+        } else if (checked.length === 1) {
+            percents.forEach(inp => inp.value = '');
+            document.getElementById('percent-' + checked[0]).value = 100;
+            warning.innerText = '';
+            warning.style.display = 'none';
+        } else {
+            let allEmpty = true;
+            checked.forEach(id => {
+                let val = document.getElementById('percent-' + id).value;
+                if (val && parseFloat(val) > 0) allEmpty = false;
             });
-    }
-
-    if(addCategoryBtn && addCategoryModal){
-        addCategoryBtn.addEventListener('click', function() {
-            newCategoryInput.value = '';
-            fetchCategoryPage(1);
-            $('#addCategoryModal').modal('show');
-        });
-    }
-
-    addCategoryForm.addEventListener('submit', function(e){
-        e.preventDefault();
-        let name = newCategoryInput.value.trim();
-        if(!name) return;
-        fetch('/categories', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-            },
-            body: JSON.stringify({ name })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data && data.id && data.name){
-                // به سلکت اصلی اضافه و انتخاب شود
-                let opt = document.createElement('option');
-                opt.value = data.id;
-                opt.text = data.name;
-                categorySelect.appendChild(opt);
-                categorySelect.value = data.id;
-                fetchCategoryPage(catCurrentPage);
-                newCategoryInput.value = '';
-            }else{
-                alert('خطا در ثبت دسته‌بندی!');
+            if (allEmpty) {
+                let share = (100 / checked.length).toFixed(2);
+                checked.forEach(id => {
+                    document.getElementById('percent-' + id).value = share;
+                });
             }
-        });
-    });
-
-    prevCatPageBtn.addEventListener('click', function(){
-        if(catCurrentPage > 1) fetchCategoryPage(catCurrentPage - 1);
-    });
-    nextCatPageBtn.addEventListener('click', function(){
-        if(catCurrentPage < catLastPage) fetchCategoryPage(catCurrentPage + 1);
-    });
-
-    categoryModalList.addEventListener('click', function(e){
-        if(e.target.classList.contains('select-cat-btn')){
-            let catId = e.target.getAttribute('data-cat-id');
-            let catName = e.target.getAttribute('data-cat-name');
-            // افزودن به سلکت اگر نبود
-            let exists = false;
-            for(let i=0; i<categorySelect.options.length; i++) {
-                if(categorySelect.options[i].value == catId) exists = true;
+            let sum = checked.reduce((acc, id) => acc + parseFloat(document.getElementById('percent-' + id).value || 0), 0);
+            if (sum !== 100 && !allEmpty) {
+                warning.innerText = 'مجموع درصدها باید ۱۰۰ باشد. مجموع فعلی: ' + sum;
+                warning.style.display = 'block';
+            } else {
+                warning.innerText = '';
+                warning.style.display = 'none';
             }
-            if(!exists){
-                let opt = document.createElement('option');
-                opt.value = catId;
-                opt.text = catName;
-                categorySelect.appendChild(opt);
-            }
-            categorySelect.value = catId;
-            $('#addCategoryModal').modal('hide');
         }
-    });
-
-    
+    }
+    checkboxes.forEach(ch => { ch.addEventListener('change', updatePercents); });
+    percents.forEach(inp => { inp.addEventListener('input', updatePercents); });
+    updatePercents();
 });
 </script>
 @endsection
