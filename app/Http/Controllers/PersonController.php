@@ -37,18 +37,18 @@ class PersonController extends Controller
     public function nextCode()
     {
         try {
-            // پیدا کردن آخرین کد با استفاده از عبارت منظم
-            $lastPerson = Person::whereRaw("accounting_code REGEXP '^persons=-[0-9]+$'")
-                ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS SIGNED) DESC')
-                ->first();
+            // استفاده از raw SQL برای دیدن دقیق نتایج
+            $sql = "SELECT * FROM persons WHERE accounting_code LIKE 'persons=-%' ORDER BY CAST(SUBSTRING(accounting_code, 9) AS SIGNED) DESC LIMIT 1";
+            $lastPerson = DB::select($sql);
 
+            \Log::info('SQL Query:', ['sql' => $sql]);
             \Log::info('Last person found:', ['person' => $lastPerson]);
 
             $nextNumber = 1001; // شماره پیش‌فرض اولیه
 
-            if ($lastPerson) {
-                // استخراج شماره از کد حسابداری
-                if (preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
+            if (!empty($lastPerson)) {
+                $lastCode = $lastPerson[0]->accounting_code;
+                if (preg_match('/^persons=-(\d+)$/', $lastCode, $matches)) {
                     $lastNumber = intval($matches[1]);
                     $nextNumber = $lastNumber + 1;
                 }
@@ -58,17 +58,33 @@ class PersonController extends Controller
 
             $nextCode = 'persons=-' . $nextNumber;
 
+            // بررسی تکراری نبودن کد
+            while(Person::where('accounting_code', $nextCode)->exists()) {
+                $nextNumber++;
+                $nextCode = 'persons=-' . $nextNumber;
+            }
+
             return response()->json([
                 'success' => true,
                 'code' => $nextCode,
-                'last_code' => $lastPerson ? $lastPerson->accounting_code : null
+                'last_code' => !empty($lastPerson) ? $lastPerson[0]->accounting_code : null,
+                'debug_info' => [
+                    'total_persons' => Person::count(),
+                    'persons_with_code' => Person::whereNotNull('accounting_code')->count(),
+                    'last_person_details' => $lastPerson
+                ]
             ]);
         } catch (\Exception $e) {
             \Log::error('Error generating next code: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
                 'message' => 'خطا در تولید کد حسابداری',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'debug_info' => [
+                    'total_persons' => Person::count(),
+                    'persons_with_code' => Person::whereNotNull('accounting_code')->count()
+                ]
             ], 500);
         }
     }
@@ -161,6 +177,17 @@ class PersonController extends Controller
     public function store(Request $request)
     {
 
+            // اول اعتبارسنجی کد حسابداری
+        $exists = Person::where('accounting_code', $request->accounting_code)->exists();
+        if ($exists) {
+            return back()
+                ->withInput()
+                ->withErrors(['accounting_code' => 'این کد حسابداری قبلاً استفاده شده است.']);
+        }
+        \Log::info('Storing new person with code:', ['code' => $request->accounting_code]);
+
+
+
         \Log::info('DATE_INPUTS', [
             'birth_date' => $request->birth_date,
             'marriage_date' => $request->marriage_date,
@@ -191,6 +218,7 @@ class PersonController extends Controller
             'country' => 'required|string',
         ];
 
+
         if ($request->input('type') == 'supplier') {
             $rules['company_name'] = 'required|string';
         } else {
@@ -215,8 +243,8 @@ class PersonController extends Controller
 
             // اگر کد خودکار فعال است و کاربر دستی کد نداده، دوباره از دیتابیس بگیر
             if ($request->input('auto_code', '1') === '1') {
-                $lastPerson = Person::where('accounting_code', 'like', 'persons=%')
-                    ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS UNSIGNED) DESC')
+                $lastPerson = Person::whereRaw("accounting_code REGEXP '^persons=-[0-9]+$'")
+                    ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS SIGNED) DESC')
                     ->first();
 
                 if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {

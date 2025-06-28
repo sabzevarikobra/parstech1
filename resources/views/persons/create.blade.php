@@ -205,6 +205,9 @@
 
 <script>
 $(document).ready(function() {
+
+
+    
     // Live Preview Update
     function updatePreview() {
         const firstName = $('input[name="first_name"]').val();
@@ -318,34 +321,60 @@ $(document).ready(function() {
     @endif
 
     function getNextCode() {
+        console.log('Fetching next code...');
         $.ajax({
             url: '/api/persons/next-code',
             method: 'GET',
             success: function(response) {
-                console.log('Response:', response); // برای دیباگ
-                if (response.code) {
+                console.log('Full API Response:', response);
+                if (response.success && response.code) {
                     $('#accounting_code').val(response.code);
-                    updatePreview(); // به‌روزرسانی پیش‌نمایش
+                    console.log('Code set to:', response.code);
+                    // اضافه کردن بررسی تکراری بودن
+                    checkCodeAvailability(response.code);
+                } else {
+                    console.error('Invalid response:', response);
+                    $('#accounting_code').val('');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error fetching next code:', error);
-                $('#accounting_code').val('person-10001');
+                console.error('API Error:', {xhr, status, error});
+                $('#accounting_code').val('');
             }
         });
     }
+
+    function checkCodeAvailability(code) {
+        $.ajax({
+            url: '/api/persons/check-code',
+            method: 'GET',
+            data: { code: code },
+            success: function(response) {
+                console.log('Code availability check:', response);
+                if (!response.available) {
+                    console.warn('Code already exists:', code);
+                    // اگر کد تکراری بود، دوباره درخواست کد جدید می‌دهیم
+                    getNextCode();
+                }
+            }
+        });
+    }
+
 
     // مقداردهی اولیه اگر حالت خودکار است
     const $accountingCodeInput = $('#accounting_code');
     const $autoSwitch = $('#autoCodeSwitch');
 
     if ($autoSwitch.is(':checked')) {
+        console.log('Auto switch is checked');
         $accountingCodeInput.prop('readonly', true);
         getNextCode();
     }
 
+
     // رویداد تغییر سوییچ
     $autoSwitch.change(function() {
+        console.log('Switch changed:', $(this).is(':checked'));
         if ($(this).is(':checked')) {
             $accountingCodeInput.prop('readonly', true);
             getNextCode();
@@ -353,7 +382,6 @@ $(document).ready(function() {
             $accountingCodeInput.prop('readonly', false);
             $accountingCodeInput.val('').focus();
         }
-        updatePreview();
     });
 });
 </script>

@@ -377,5 +377,17 @@ Route::post('persons/{person}/notes', [PersonController::class, 'storeNote'])->n
 
 Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
 
+// بررسی تکراری نبودن کد
+Route::get('/api/persons/check-code', function (Request $request) {
+    $code = $request->get('code');
+    $exists = \App\Models\Person::where('accounting_code', $code)->exists();
+    \Log::info('Checking code availability:', [
+        'code' => $code,
+        'exists' => $exists
+    ]);
+    return response()->json(['available' => !$exists]);
+});
+// تولید کد جدید
+Route::get('/api/persons/next-code', [\App\Http\Controllers\PersonController::class, 'nextCode']);
 
 require __DIR__.'/auth.php';
