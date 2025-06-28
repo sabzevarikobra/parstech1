@@ -494,33 +494,35 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($payments as $payment)
+                                        @forelse($payments as $payment)
                                         <tr>
-                                            <td>{{ jdate($payment->paid_at)->format('Y/m/d') }}</td>
                                             <td>
-                                                @switch($payment->method)
-                                                    @case('cash')
-                                                        نقدی
-                                                        @break
-                                                    @case('card')
-                                                        کارت به کارت
-                                                        @break
-                                                    @case('cheque')
-                                                        چک
-                                                        @break
-                                                    @default
-                                                        {{ $payment->method }}
-                                                @endswitch
+                                                @if(isset($payment['paid_at']) && $payment['paid_at'])
+                                                    {{ jdate($payment['paid_at'])->format('Y/m/d') }}
+                                                @else
+                                                    -
+                                                @endif
                                             </td>
-                                            <td>{{ number_format($payment->amount) }} تومان</td>
+                                            <td>{{ $payment['method'] ?? '-' }}</td>
+                                            <td>{{ number_format($payment['amount'] ?? 0) }} تومان</td>
                                             <td>
-                                                <span class="badge bg-{{ $payment->status == 'success' ? 'success' : 'warning' }}">
-                                                    {{ $payment->status == 'success' ? 'موفق' : 'در انتظار تایید' }}
-                                                </span>
+                                                @if(isset($payment['status']))
+                                                    <span class="badge bg-{{ $payment['status'] == 'paid' ? 'success' : 'warning' }}">
+                                                        {{ $payment['status'] == 'paid' ? 'پرداخت شده' : 'در انتظار تایید' }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
                                             </td>
-                                            <td>{{ $payment->description }}</td>
+                                            <td>{{ $payment['description'] ?? '-' }}</td>
                                         </tr>
-                                        @endforeach
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center">
+                                                هیچ پرداختی ثبت نشده است.
+                                            </td>
+                                        </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -563,7 +565,7 @@
                                     <small>{{ jdate($cheque->due_date)->format('Y/m/d') }}</small>
                                 </div>
                                 <small class="text-muted d-block">
-                                    {{ $cheque->bank }} - {{ $cheque->number }}
+                                    {{ $cheque->bank ?? '-' }} - {{ $cheque->number ?? '-' }}
                                 </small>
                             </div>
                             @endforeach

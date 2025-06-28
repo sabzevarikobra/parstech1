@@ -246,201 +246,205 @@ class PersonController extends Controller
     }
 
     public function show(Person $person)
-{
-    // آمار کلی به تفکیک محصولات و خدمات
-    $productStats = $person->sales()
-        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
-        ->join('products', 'sale_items.product_id', '=', 'products.id')
-        ->where('products.type', 'product')
-        ->selectRaw('
-            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
-            COUNT(DISTINCT sales.id) as purchase_count,
-            SUM(sales.paid_amount) as paid_amount
-        ')
-        ->first();
-
-    $serviceStats = $person->sales()
-        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
-        ->join('products', 'sale_items.product_id', '=', 'products.id')
-        ->where('products.type', 'service')
-        ->selectRaw('
-            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
-            COUNT(DISTINCT sales.id) as purchase_count,
-            SUM(sales.paid_amount) as paid_amount
-        ')
-        ->first();
-
-    // روند خرید در بازه‌های مختلف
-    $periods = [
-        '5_days' => now()->subDays(5),
-        '1_month' => now()->subMonth(),
-        '3_months' => now()->subMonths(3),
-        '6_months' => now()->subMonths(6),
-        '1_year' => now()->subYear()
-    ];
-
-    $purchaseTrends = [];
-    foreach ($periods as $key => $startDate) {
-        $trend = $person->sales()
-            ->where('created_at', '>=', $startDate)
+    {
+        // آمار کلی به تفکیک محصولات و خدمات
+        $productStats = $person->sales()
+            ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->where('products.type', 'product')
             ->selectRaw('
-                DATE(created_at) as date,
-                SUM(final_amount) as total_amount,
-                SUM(paid_amount) as paid_amount
+                SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+                COUNT(DISTINCT sales.id) as purchase_count,
+                SUM(sales.paid_amount) as paid_amount
             ')
-            ->groupBy('date')
+            ->first();
+
+        $serviceStats = $person->sales()
+            ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->where('products.type', 'service')
+            ->selectRaw('
+                SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+                COUNT(DISTINCT sales.id) as purchase_count,
+                SUM(sales.paid_amount) as paid_amount
+            ')
+            ->first();
+
+        // روند خرید در بازه‌های مختلف
+        $periods = [
+            '5_days' => now()->subDays(5),
+            '1_month' => now()->subMonth(),
+            '3_months' => now()->subMonths(3),
+            '6_months' => now()->subMonths(6),
+            '1_year' => now()->subYear()
+        ];
+
+        $purchaseTrends = [];
+        foreach ($periods as $key => $startDate) {
+            $trend = $person->sales()
+                ->where('created_at', '>=', $startDate)
+                ->selectRaw('
+                    DATE(created_at) as date,
+                    SUM(final_amount) as total_amount,
+                    SUM(paid_amount) as paid_amount
+                ')
+                ->groupBy('date')
+                ->get();
+
+            $purchaseTrends[$key] = [
+                'labels' => $trend->pluck('date')->map(function($date) {
+                    return jdate($date)->format('Y/m/d');
+                }),
+                'amounts' => [
+                    'total' => $trend->pluck('total_amount'),
+                    'paid' => $trend->pluck('paid_amount')
+                ]
+            ];
+        }
+
+        // محصولات و خدمات پرفروش به تفکیک
+        $topProducts = $person->sales()
+            ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->where('products.type', 'product')
+            ->selectRaw('
+                products.id,
+                products.name,
+                products.code,
+                SUM(sale_items.quantity) as total_quantity,
+                SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+                COUNT(DISTINCT sales.id) as purchase_count,
+                MAX(sales.created_at) as last_purchase
+            ')
+            ->groupBy('products.id', 'products.name', 'products.code')
+            ->orderBy('total_amount', 'desc')
+            ->limit(5)
             ->get();
 
-        $purchaseTrends[$key] = [
-            'labels' => $trend->pluck('date')->map(function($date) {
-                return jdate($date)->format('Y/m/d');
-            }),
-            'amounts' => [
-                'total' => $trend->pluck('total_amount'),
-                'paid' => $trend->pluck('paid_amount')
-            ]
+        $topServices = $person->sales()
+            ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->where('products.type', 'service')
+            ->selectRaw('
+                products.id,
+                products.name,
+                products.code,
+                SUM(sale_items.quantity) as total_quantity,
+                SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+                COUNT(DISTINCT sales.id) as purchase_count,
+                MAX(sales.created_at) as last_purchase
+            ')
+            ->groupBy('products.id', 'products.name', 'products.code')
+            ->orderBy('total_amount', 'desc')
+            ->limit(5)
+            ->get();
+
+        // آمار کلی
+        $totalStats = [
+            'total_amount' => ($productStats->total_amount ?? 0) + ($serviceStats->total_amount ?? 0),
+            'total_paid' => ($productStats->paid_amount ?? 0) + ($serviceStats->paid_amount ?? 0),
+            'remaining' => (($productStats->total_amount ?? 0) + ($serviceStats->total_amount ?? 0)) -
+                          (($productStats->paid_amount ?? 0) + ($serviceStats->paid_amount ?? 0))
         ];
+
+        // تراکنش‌ها با صفحه‌بندی
+        $sales = $person->sales()
+            ->with(['items.product'])
+            ->latest()
+            ->paginate(10);
+
+        // آمار اضافی مورد نیاز
+        $totalPurchases = $person->sales()->count();
+        $totalAmount = $person->sales()->sum('final_amount');
+        $averageOrderValue = $totalPurchases > 0 ? $totalAmount / $totalPurchases : 0;
+
+        // چک‌های در جریان
+        $pendingCheques = $person->sales()
+            ->whereNotNull('cheque_number')
+            ->where('cheque_status', 'pending')
+            ->where('cheque_due_date', '>=', now())
+            ->select(['cheque_amount as amount', 'cheque_due_date as due_date',
+                     'cheque_number as number', 'cheque_bank as bank'])
+            ->orderBy('cheque_due_date')
+            ->get();
+
+        // تاریخچه پرداخت‌ها
+        $payments = collect();
+        $allPayments = $person->sales()
+            ->where(function($query) {
+                $query->whereNotNull('paid_at')
+                      ->orWhereNotNull('cash_amount')
+                      ->orWhereNotNull('card_amount')
+                      ->orWhereNotNull('pos_amount')
+                      ->orWhereNotNull('online_amount')
+                      ->orWhereNotNull('cheque_amount');
+            })
+            ->get();
+
+        foreach ($allPayments as $sale) {
+            if ($sale->cash_amount > 0) {
+                $payments->push([
+                    'paid_at' => $sale->cash_paid_at,
+                    'method' => 'نقدی',
+                    'amount' => $sale->cash_amount,
+                    'status' => 'paid',
+                    'description' => "پرداخت نقدی برای فاکتور {$sale->invoice_number}"
+                ]);
+            }
+            if ($sale->card_amount > 0) {
+                $payments->push([
+                    'paid_at' => $sale->card_paid_at,
+                    'method' => 'کارت به کارت',
+                    'amount' => $sale->card_amount,
+                    'status' => 'paid',
+                    'description' => "پرداخت کارت به کارت برای فاکتور {$sale->invoice_number}"
+                ]);
+            }
+            if ($sale->pos_amount > 0) {
+                $payments->push([
+                    'paid_at' => $sale->pos_paid_at,
+                    'method' => 'کارتخوان',
+                    'amount' => $sale->pos_amount,
+                    'status' => 'paid',
+                    'description' => "پرداخت با کارتخوان برای فاکتور {$sale->invoice_number}"
+                ]);
+            }
+            if ($sale->cheque_amount > 0) {
+                $payments->push([
+                    'paid_at' => $sale->cheque_received_at,
+                    'method' => 'چک',
+                    'amount' => $sale->cheque_amount,
+                    'status' => $sale->cheque_status,
+                    'description' => "چک شماره {$sale->cheque_number} برای فاکتور {$sale->invoice_number}"
+                ]);
+            }
+        }
+
+        $payments = $payments->sortByDesc('paid_at')->values();
+
+        // یادداشت‌ها
+        $notes = $person->notes()
+            ->with('user')
+            ->latest()
+            ->get();
+
+        return view('persons.show', compact(
+            'person',
+            'productStats',
+            'serviceStats',
+            'totalStats',
+            'purchaseTrends',
+            'topProducts',
+            'topServices',
+            'sales',
+            'totalPurchases',
+            'totalAmount',
+            'averageOrderValue',
+            'pendingCheques',
+            'payments',
+            'notes'
+        ));
     }
-
-    // محصولات و خدمات پرفروش به تفکیک
-    $topProducts = $person->sales()
-        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
-        ->join('products', 'sale_items.product_id', '=', 'products.id')
-        ->where('products.type', 'product')
-        ->selectRaw('
-            products.id,
-            products.name,
-            SUM(sale_items.quantity) as total_quantity,
-            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
-            COUNT(DISTINCT sales.id) as purchase_count,
-            MAX(sales.created_at) as last_purchase
-        ')
-        ->groupBy('products.id', 'products.name')
-        ->orderBy('total_amount', 'desc')
-        ->limit(5)
-        ->get();
-
-    $topServices = $person->sales()
-        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
-        ->join('products', 'sale_items.product_id', '=', 'products.id')
-        ->where('products.type', 'service')
-        ->selectRaw('
-            products.id,
-            products.name,
-            SUM(sale_items.quantity) as total_quantity,
-            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
-            COUNT(DISTINCT sales.id) as purchase_count,
-            MAX(sales.created_at) as last_purchase
-        ')
-        ->groupBy('products.id', 'products.name')
-        ->orderBy('total_amount', 'desc')
-        ->limit(5)
-        ->get();
-
-    // آمار کلی
-    $totalStats = [
-        'total_amount' => ($productStats->total_amount ?? 0) + ($serviceStats->total_amount ?? 0),
-        'total_paid' => ($productStats->paid_amount ?? 0) + ($serviceStats->paid_amount ?? 0),
-        'remaining' => (($productStats->total_amount ?? 0) + ($serviceStats->total_amount ?? 0)) -
-                      (($productStats->paid_amount ?? 0) + ($serviceStats->paid_amount ?? 0))
-    ];
-
-    // تراکنش‌ها با صفحه‌بندی
-    $sales = $person->sales()
-        ->with(['items.product'])
-        ->latest()
-        ->paginate(10);
-
-    // آمار اضافی مورد نیاز
-    $totalPurchases = $person->sales()->count();
-    $totalAmount = $person->sales()->sum('final_amount');
-    $averageOrderValue = $totalPurchases > 0 ? $totalAmount / $totalPurchases : 0;
-
-    // چک‌های در جریان
-    $pendingCheques = $person->sales()
-        ->whereNotNull('cheque_number')
-        ->where('cheque_status', 'pending')
-        ->where('cheque_due_date', '>=', now())
-        ->select(['cheque_amount as amount', 'cheque_due_date as due_date',
-                 'cheque_number as number', 'cheque_bank as bank'])
-        ->orderBy('cheque_due_date')
-        ->get();
-
-    // تاریخچه پرداخت‌ها
-    $payments = $person->sales()
-    ->select([
-        'sales.id',
-        'sales.paid_at',
-        'sales.payment_method',
-        'sales.paid_amount as amount',
-        'sales.status',
-        'sales.payment_notes as description',
-        'sales.cash_amount',
-        'sales.card_amount',
-        'sales.pos_amount',
-        'sales.online_amount',
-        'sales.cheque_amount'
-    ])
-    ->where(function($query) {
-        $query->whereNotNull('paid_at')
-              ->orWhereNotNull('cash_amount')
-              ->orWhereNotNull('card_amount')
-              ->orWhereNotNull('pos_amount')
-              ->orWhereNotNull('online_amount')
-              ->orWhereNotNull('cheque_amount');
-    })
-    ->orderBy('paid_at', 'desc')
-    ->get()
-    ->map(function($sale) {
-        // برای هر نوع پرداخت یک ردیف جداگانه
-        $payments = [];
-
-        if ($sale->cash_amount > 0) {
-            $payments[] = [
-                'date' => $sale->paid_at,
-                'method' => 'نقدی',
-                'amount' => $sale->cash_amount,
-                'status' => $sale->status,
-                'description' => $sale->description
-            ];
-        }
-        if ($sale->card_amount > 0) {
-            $payments[] = [
-                'date' => $sale->paid_at,
-                'method' => 'کارت به کارت',
-                'amount' => $sale->card_amount,
-                'status' => $sale->status,
-                'description' => $sale->description
-            ];
-        }
-        return $payments;
-    })
-    ->flatten(1)
-    ->filter();
-
-    // یادداشت‌ها
-    $notes = $person->notes()
-        ->with('user')
-        ->latest()
-        ->get();
-
-    return view('persons.show', compact(
-        'person',
-        'productStats',
-        'serviceStats',
-        'totalStats',
-        'purchaseTrends',
-        'topProducts',
-        'topServices',
-        'sales',
-        'totalPurchases',
-        'totalAmount',
-        'averageOrderValue',
-        'pendingCheques',
-        'payments',
-        'notes'
-    ));
-}
 
     public function updatePercent(Request $request, Person $person)
     {
