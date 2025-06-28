@@ -69,71 +69,72 @@ class PersonController extends Controller
     }
 
     public function index(Request $request)
-{
-    // Query Builder اصلی
-    $query = Person::query();
+    {
+        // Query Builder اصلی
+        $query = Person::query();
 
-    // جستجو
-    if ($request->filled('search')) {
-        $search = $request->search;
-        $query->where(function($q) use ($search) {
-            $q->where('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%")
-              ->orWhere('company_name', 'like', "%{$search}%")
-              ->orWhere('mobile', 'like', "%{$search}%")
-              ->orWhere('accounting_code', 'like', "%{$search}%");
-        });
-    }
+        // جستجو
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%")
+                  ->orWhere('mobile', 'like', "%{$search}%")
+                  ->orWhere('accounting_code', 'like', "%{$search}%");
+            });
+        }
 
-    // فیلتر نوع
-    if ($request->filled('type')) {
-        $query->where('type', $request->type);
-    }
+        // فیلتر نوع
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
 
-    // فیلتر وضعیت
-    if ($request->filled('status')) {
-        $query->where('status', $request->status);
-    }
+        // فیلتر وضعیت
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
-    // فیلتر تاریخ
-    if ($request->filled('date_range')) {
-        $dates = explode(' - ', $request->date_range);
-        if (count($dates) == 2) {
-            try {
-                $start = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[0]))->startOfDay();
-                $end = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[1]))->endOfDay();
-                $query->whereBetween('created_at', [$start, $end]);
-            } catch (\Exception $e) {
-                // در صورت خطا در تاریخ، فیلتر را نادیده بگیر
+        // فیلتر تاریخ
+        if ($request->filled('date_range')) {
+            $dates = explode(' - ', $request->date_range);
+            if (count($dates) == 2) {
+                try {
+                    $start = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[0]))->startOfDay();
+                    $end = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[1]))->endOfDay();
+                    $query->whereBetween('created_at', [$start, $end]);
+                } catch (\Exception $e) {
+                    // در صورت خطا در تاریخ، فیلتر را نادیده بگیر
+                }
             }
         }
+
+        // آمار کلی
+        $totalPersons = Person::count();
+        $totalTransactions = Person::sum('total_sales'); // یا هر فیلد دیگری که مجموع معاملات رو نشون میده
+        $activeCustomers = Person::where('type', 'customer')
+                               ->where('status', 'active')
+                               ->count();
+
+        // *** این خط را اضافه کن ***
+        $debtorsCount = Person::where('balance', '>', 0)->count();
+
+        // دریافت لیست اشخاص با اطلاعات مالی
+        $persons = $query->latest()
+                        ->paginate(10)
+                        ->through(function ($person) {
+                            // محاسبه نام کامل و سایر محاسبات مورد نیاز
+                            return $person;
+                        });
+
+        return view('persons.index', compact(
+            'persons',
+            'totalPersons',
+            'totalTransactions',
+            'activeCustomers',
+            'debtorsCount'
+        ));
     }
-
-    // آمار کلی
-    $totalPersons = Person::count();
-    $totalTransactions = Person::sum('total_sales'); // یا هر فیلد دیگری که مجموع معاملات رو نشون میده
-    $activeCustomers = Person::where('type', 'customer')
-                           ->where('status', 'active')
-                           ->count();
-
-                           $debtors = Person::where('balance', '>', 0)->orderByDesc('balance')->get();
-
-    // دریافت لیست اشخاص با اطلاعات مالی
-    $persons = $query->latest()
-                    ->paginate(10)
-                    ->through(function ($person) {
-                        // محاسبه نام کامل و سایر محاسبات مورد نیاز
-                        return $person;
-                    });
-
-    return view('persons.index', compact(
-        'persons',
-        'totalPersons',
-        'totalTransactions',
-        'activeCustomers',
-        'debtorsCount'
-    ));
-}
 
     public function create()
     {
