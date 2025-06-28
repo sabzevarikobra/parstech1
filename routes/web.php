@@ -313,7 +313,17 @@ Route::get('/customers/search', function (Request $request) {
 
     return response()->json($results);
 });
+Route::get('/update-persons-financials', function() {
+    $persons = \App\Models\Person::all();
+    $count = 0;
 
+    foreach($persons as $person) {
+        $person->updateFinancials();
+        $count++;
+    }
+
+    return "Updated financial information for $count persons.";
+})->middleware('auth');
 Route::get('/api/customers/search', function(Request $request) {
     $q = $request->get('q');
     $results = Person::query()

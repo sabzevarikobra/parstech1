@@ -67,7 +67,9 @@ class Kernel implements KernelContract
      *
      * @var array
      */
-    protected $commands = [];
+    protected $commands = [
+        Commands\UpdatePersonsFinancials::class,
+    ];
 
     /**
      * The paths where Artisan commands should be automatically discovered.

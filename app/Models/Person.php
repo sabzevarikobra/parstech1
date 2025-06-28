@@ -87,6 +87,7 @@ class Person extends Model
         return $this->hasMany(Sale::class, 'customer_id');
     }
 
+
     public function lastTransaction()
     {
         return $this->hasOne(Transaction::class)->latest();
@@ -128,11 +129,25 @@ class Person extends Model
     // Helper method برای به‌روزرسانی مبالغ
     public function updateFinancials()
     {
-        // این متد را می‌توانید بعد از هر تراکنش صدا بزنید
-        $this->total_purchases = $this->purchases()->sum('amount') ?? 0;
-        $this->total_sales = $this->sales()->sum('amount') ?? 0;
+        // محاسبه مجموع فروش‌ها با استفاده از final_amount
+        $this->total_sales = $this->sales()
+            ->where('status', '!=', 'cancelled')
+            ->sum('final_amount') ?? 0;
+
+        // محاسبه مجموع پرداخت‌ها با استفاده از paid_amount
+        $this->total_purchases = $this->sales()
+            ->where('status', '!=', 'cancelled')
+            ->sum('paid_amount') ?? 0;
+
+        // محاسبه مانده حساب
         $this->balance = $this->total_sales - $this->total_purchases;
-        $this->last_transaction_at = now();
+
+        // به‌روزرسانی تاریخ آخرین تراکنش
+        $lastSale = $this->sales()->latest()->first();
+        if ($lastSale) {
+            $this->last_transaction_at = $lastSale->created_at;
+        }
+
         $this->save();
     }
 
