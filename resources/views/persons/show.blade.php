@@ -30,10 +30,6 @@
     margin-bottom: 20px;
 }
 
-.transactions-table th {
-    background: #f8f9fc;
-}
-
 .kpi-card {
     text-align: center;
     padding: 15px;
@@ -70,13 +66,6 @@
     border-radius: 50%;
     background: #fff;
     border: 2px solid #4e73df;
-}
-
-.tab-content {
-    background: #fff;
-    border-radius: 0 0 15px 15px;
-    padding: 20px;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
 }
 </style>
 @endpush
@@ -127,68 +116,137 @@
         </div>
     </div>
 
-    <!-- شاخص‌های کلیدی -->
+    <!-- آمار کلی -->
     <div class="row mb-4">
+        <!-- کل خرید -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="kpi-card">
-                <div class="text-primary">
-                    <i class="fas fa-shopping-cart fa-2x"></i>
+            <div class="card border-left-primary h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">کل خرید</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ number_format($totalStats['total_amount']) }} تومان
+                            </div>
+                            <div class="text-xs text-success mt-1">
+                                پرداخت شده: {{ number_format($totalStats['total_paid']) }} تومان
+                            </div>
+                            @if($totalStats['remaining'] > 0)
+                                <div class="text-xs text-danger">
+                                    باقیمانده: {{ number_format($totalStats['remaining']) }} تومان
+                                </div>
+                            @endif
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="value">{{ number_format($totalPurchases) }}</div>
-                <div class="text-muted">تعداد کل خرید</div>
             </div>
         </div>
+
+        <!-- آمار محصولات -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="kpi-card">
-                <div class="text-success">
-                    <i class="fas fa-money-bill fa-2x"></i>
+            <div class="card border-left-success h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">خرید محصولات</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ number_format($productStats->total_amount ?? 0) }} تومان
+                            </div>
+                            <div class="text-xs mt-1">
+                                تعداد خرید: {{ $productStats->purchase_count ?? 0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-box fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="value">{{ number_format($totalAmount) }} تومان</div>
-                <div class="text-muted">مجموع خرید</div>
             </div>
         </div>
+
+        <!-- آمار خدمات -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="kpi-card">
-                <div class="text-info">
-                    <i class="fas fa-calculator fa-2x"></i>
+            <div class="card border-left-info h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">خرید خدمات</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ number_format($serviceStats->total_amount ?? 0) }} تومان
+                            </div>
+                            <div class="text-xs mt-1">
+                                تعداد خرید: {{ $serviceStats->purchase_count ?? 0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-cogs fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="value">{{ $averageOrderValue ? number_format($averageOrderValue) : 0 }} تومان</div>
-                <div class="text-muted">میانگین خرید</div>
             </div>
         </div>
+
+        <!-- میانگین خرید -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="kpi-card">
-                <div class="text-{{ $person->balance >= 0 ? 'success' : 'danger' }}">
-                    <i class="fas fa-wallet fa-2x"></i>
+            <div class="card border-left-warning h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">میانگین خرید</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ number_format($averageOrderValue) }} تومان
+                            </div>
+                            <div class="text-xs mt-1">
+                                تعداد کل خرید: {{ $totalPurchases }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="value">{{ number_format(abs($person->balance)) }} تومان</div>
-                <div class="text-muted">{{ $person->balance >= 0 ? 'بستانکار' : 'بدهکار' }}</div>
             </div>
         </div>
     </div>
 
-    <!-- نمودارها و آمار -->
+    <!-- نمودارها -->
     <div class="row mb-4">
+        <!-- نمودار روند خرید -->
         <div class="col-xl-8">
-            <div class="info-card">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">روند خرید</h5>
-                    <select class="form-select" style="width: auto" id="purchaseTrendPeriod">
-                        <option value="week">هفته گذشته</option>
-                        <option value="month" selected>ماه گذشته</option>
-                        <option value="year">سال گذشته</option>
-                    </select>
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">روند خرید</h6>
+                        <select class="form-select form-select-sm" id="trendPeriodSelect" style="width: auto">
+                            <option value="5_days">5 روز گذشته</option>
+                            <option value="1_month" selected>1 ماه گذشته</option>
+                            <option value="3_months">3 ماه گذشته</option>
+                            <option value="6_months">6 ماه گذشته</option>
+                            <option value="1_year">1 سال گذشته</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="purchasesTrendChart"></canvas>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="purchasesTrendChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- نمودار نسبت محصولات و خدمات -->
         <div class="col-xl-4">
-            <div class="info-card">
-                <h5 class="mb-3">محصولات پرخرید</h5>
-                <div class="chart-container">
-                    <canvas id="topProductsChart"></canvas>
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">نسبت محصولات و خدمات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="purchaseTypeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -198,37 +256,32 @@
     <ul class="nav nav-tabs" role="tablist">
         <li class="nav-item">
             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#transactions">
-                <i class="fas fa-history me-1"></i>
-                تراکنش‌ها
+                <i class="fas fa-history me-1"></i>تراکنش‌ها
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#products">
-                <i class="fas fa-box me-1"></i>
-                محصولات
+                <i class="fas fa-box me-1"></i>محصولات و خدمات
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#payments">
-                <i class="fas fa-money-check me-1"></i>
-                پرداخت‌ها
+                <i class="fas fa-money-check me-1"></i>پرداخت‌ها
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#notes">
-                <i class="fas fa-sticky-note me-1"></i>
-                یادداشت‌ها
+                <i class="fas fa-sticky-note me-1"></i>یادداشت‌ها
             </button>
         </li>
     </ul>
 
-    <div class="tab-content">
+    <div class="tab-content mt-3">
         <!-- تب تراکنش‌ها -->
         <div class="tab-pane fade show active" id="transactions">
             <div class="card">
-                <div class="card-body">
-                    <!-- فیلترها -->
-                    <div class="row g-3 mb-4">
+                <div class="card-header">
+                    <div class="row g-3 align-items-center">
                         <div class="col-md-3">
                             <input type="text" class="form-control" id="transaction-search" placeholder="جستجو در فاکتورها...">
                         </div>
@@ -245,13 +298,12 @@
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-primary w-100" id="filter-transactions">
-                                <i class="fas fa-search me-1"></i>
-                                جستجو
+                                <i class="fas fa-search me-1"></i>جستجو
                             </button>
                         </div>
                     </div>
-
-                    <!-- جدول تراکنش‌ها -->
+                </div>
+                <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead>
@@ -321,7 +373,6 @@
                             </tbody>
                         </table>
                     </div>
-
                     <!-- Pagination -->
                     <div class="d-flex justify-content-center mt-4">
                         {{ $sales->links() }}
@@ -330,30 +381,44 @@
             </div>
         </div>
 
-        <!-- تب محصولات -->
+        <!-- تب محصولات و خدمات -->
+        <!-- در تب محصولات و خدمات -->
         <div class="tab-pane fade" id="products">
             <div class="row">
-                <div class="col-md-8">
+                <!-- محصولات -->
+                <div class="col-md-6">
                     <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-primary">محصولات خریداری شده</h6>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title mb-3">محصولات خریداری شده</h5>
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-bordered">
                                     <thead>
                                         <tr>
-                                            <th>محصول</th>
+                                            <th>کد محصول</th>
+                                            <th>نام محصول</th>
                                             <th>تعداد خرید</th>
+                                            <th>مبلغ کل</th>
                                             <th>آخرین خرید</th>
-                                            <th>مجموع مبلغ</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($topProducts as $product)
                                         <tr>
-                                            <td>{{ $product->name }}</td>
-                                            <td>{{ $product->purchase_count }}</td>
-                                            <td>{{ jdate($product->last_purchase)->format('Y/m/d') }}</td>
+                                            <td>
+                                                <a href="{{ route('products.show', $product->id) }}" class="text-primary">
+                                                    {{ $product->code ?? 'بدون کد' }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('products.show', $product->id) }}" class="text-primary">
+                                                    {{ $product->name }}
+                                                </a>
+                                            </td>
+                                            <td>{{ $product->total_quantity }}</td>
                                             <td>{{ number_format($product->total_amount) }} تومان</td>
+                                            <td>{{ $product->last_purchase ? jdate($product->last_purchase)->ago() : '-' }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>
@@ -362,23 +427,45 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="info-card">
-                        <h5 class="mb-3">آمار محصولات</h5>
-                        <div class="d-flex flex-column gap-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>تعداد محصولات متمایز:</span>
-                                <strong>{{ $uniqueProducts }}</strong>
-                            </div>
-                            @if($mostBoughtProduct)
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>محصول پرتکرار:</span>
-                                <strong>{{ $mostBoughtProduct->name }}</strong>
-                            </div>
-                            @endif
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>بیشترین مبلغ خرید:</span>
-                                <strong>{{ number_format($highestPurchase) }} تومان</strong>
+
+                <!-- خدمات -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-primary">خدمات خریداری شده</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>کد خدمت</th>
+                                            <th>نام خدمت</th>
+                                            <th>تعداد خرید</th>
+                                            <th>مبلغ کل</th>
+                                            <th>آخرین خرید</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($topServices as $service)
+                                        <tr>
+                                            <td>
+                                                <a href="{{ route('products.show', $service->id) }}" class="text-primary">
+                                                    {{ $service->code ?? 'بدون کد' }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('products.show', $service->id) }}" class="text-primary">
+                                                    {{ $service->name }}
+                                                </a>
+                                            </td>
+                                            <td>{{ $service->total_quantity }}</td>
+                                            <td>{{ number_format($service->total_amount) }} تومان</td>
+                                            <td>{{ $service->last_purchase ? jdate($service->last_purchase)->ago() : '-' }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -391,10 +478,12 @@
             <div class="row">
                 <div class="col-md-8">
                     <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-primary">تاریخچه پرداخت</h6>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title mb-3">تاریخچه پرداخت</h5>
                             <div class="table-responsive">
-                                <table class="table">
+                                <table class="table table-bordered">
                                     <thead>
                                         <tr>
                                             <th>تاریخ</th>
@@ -443,22 +532,22 @@
                         <h5 class="mb-3">وضعیت پرداخت</h5>
                         <div class="d-flex flex-column gap-3">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span>کل بدهی:</span>
-                                <strong class="text-danger">
-                                    {{ number_format($totalDebt) }} تومان
+                                <span>کل خرید:</span>
+                                <strong class="text-primary">
+                                    {{ number_format($totalStats['total_amount']) }} تومان
                                 </strong>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span>کل پرداختی:</span>
                                 <strong class="text-success">
-                                    {{ number_format($totalPaid) }} تومان
+                                    {{ number_format($totalStats['total_paid']) }} تومان
                                 </strong>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span>مانده حساب:</span>
-                                <strong class="text-{{ $balance >= 0 ? 'success' : 'danger' }}">
-                                    {{ number_format(abs($balance)) }} تومان
-                                    {{ $balance >= 0 ? 'بستانکار' : 'بدهکار' }}
+                                <strong class="text-{{ $totalStats['remaining'] > 0 ? 'danger' : 'success' }}">
+                                    {{ number_format(abs($totalStats['remaining'])) }} تومان
+                                    {{ $totalStats['remaining'] > 0 ? 'بدهکار' : 'بستانکار' }}
                                 </strong>
                             </div>
                         </div>
@@ -571,75 +660,68 @@
 @endsection
 
 @push('scripts')
+<!-- اول jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- بعد moment -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<!-- بعد moment-jalaali -->
 <script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.9.2/build/moment-jalaali.js"></script>
+<!-- بعد daterangepicker -->
 <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-
+<!-- و در نهایت Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // تنظیمات Chart.js با آخرین نسخه
-    const config = {
-        plugins: {
-            colors: {
-                enabled: true
-            }
-        }
-    };
+// تنظیمات Chart.js
+Chart.defaults.font.family = 'IRANSans';
+Chart.defaults.color = '#666';
+Chart.defaults.responsive = true;
+Chart.defaults.maintainAspectRatio = false;
 
-    Chart.defaults.set('plugins.colors', {
-        enabled: true
-    });
+// نمودار روند خرید
+const purchasesTrendData = @json($purchaseTrends);
+let currentTrendChart;
 
-    Chart.defaults.font.family = 'AnjomanMax';
-    Chart.defaults.color = '#666';
-    Chart.defaults.responsive = true;
-    Chart.defaults.maintainAspectRatio = false;
+function updateTrendChart(period) {
+    const data = purchasesTrendData[period];
+    const ctx = document.getElementById('purchasesTrendChart').getContext('2d');
 
-    // نمودار روند خرید
-    const purchasesTrendCtx = document.getElementById('purchasesTrendChart').getContext('2d');
-    new Chart(purchasesTrendCtx, {
+    if (currentTrendChart) {
+        currentTrendChart.destroy();
+    }
+
+    currentTrendChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: @json($purchasesTrendLabels),
-            datasets: [{
-                label: 'مبلغ خرید',
-                data: @json($purchasesTrendData),
-                borderColor: '#4e73df',
-                backgroundColor: 'rgba(78, 115, 223, 0.2)',
-                fill: true,
-                tension: 0.4,
-                pointStyle: 'circle',
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'مبلغ کل',
+                    data: data.amounts.total,
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    fill: true
+                },
+                {
+                    label: 'پرداخت شده',
+                    data: data.amounts.paid,
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                    fill: true
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
             plugins: {
                 legend: {
-                    display: false
+                    position: 'top',
+                    rtl: true
                 },
                 tooltip: {
                     rtl: true,
                     titleAlign: 'right',
-                    textDirection: 'rtl',
-                    bodyAlign: 'right',
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('fa-IR').format(context.parsed.y) + ' تومان';
-                            }
-                            return label;
-                        }
-                    }
+                    bodyAlign: 'right'
                 }
             },
             scales: {
@@ -654,99 +736,115 @@
             }
         }
     });
+}
 
-    // نمودار محصولات پرخرید
-    const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
-    new Chart(topProductsCtx, {
-        type: 'doughnut',
-        data: {
-            labels: @json($topProductsLabels),
-            datasets: [{
-                data: @json($topProductsData),
-                backgroundColor: [
-                    'rgba(78, 115, 223, 0.8)',
-                    'rgba(28, 200, 138, 0.8)',
-                    'rgba(54, 185, 204, 0.8)',
-                    'rgba(246, 194, 62, 0.8)',
-                    'rgba(231, 74, 59, 0.8)'
-                ],
-                borderWidth: 1,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    rtl: true,
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: {
-                            size: 12
-                        }
+// نمودار نسبت محصولات و خدمات
+const purchaseTypeCtx = document.getElementById('purchaseTypeChart').getContext('2d');
+new Chart(purchaseTypeCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['محصولات', 'خدمات'],
+        datasets: [{
+            data: [
+                {{ $productStats->total_amount ?? 0 }},
+                {{ $serviceStats->total_amount ?? 0 }}
+            ],
+            backgroundColor: [
+                'rgba(28, 200, 138, 0.8)', // سبز برای محصولات
+                'rgba(78, 115, 223, 0.8)'   // آبی برای خدمات
+            ],
+            borderWidth: 1,
+            borderColor: '#ffffff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                rtl: true,
+                labels: {
+                    usePointStyle: true,
+                    padding: 20,
+                    font: {
+                        size: 12
                     }
-                },
-                tooltip: {
-                    rtl: true,
-                    titleAlign: 'right',
-                    textDirection: 'rtl',
-                    bodyAlign: 'right'
                 }
             },
-            cutout: '60%',
-            radius: '90%'
-        }
-    });
-
-
-    // تابع فرمت‌بندی اعداد
-    function number_format(number) {
-        return new Intl.NumberFormat('fa-IR').format(number);
-    }
-
-    // نمایش مودال پرداخت
-    function showPaymentModal(saleId) {
-        document.getElementById('payment-sale-id').value = saleId;
-        new bootstrap.Modal(document.getElementById('paymentModal')).show();
-    }
-
-    // تنظیمات Date Range Picker
-    $('.daterange').daterangepicker({
-        locale: {
-            format: 'jYYYY/jMM/jDD',
-            separator: ' - ',
-            applyLabel: 'اعمال',
-            cancelLabel: 'انصراف',
-            fromLabel: 'از',
-            toLabel: 'تا',
-            customRangeLabel: 'بازه دلخواه',
-            weekLabel: 'هفته',
-            daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
-            monthNames: [
-                'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
-            ],
-            firstDay: 6
+            tooltip: {
+                rtl: true,
+                titleAlign: 'right',
+                textDirection: 'rtl',
+                bodyAlign: 'right',
+                callbacks: {
+                    label: function(context) {
+                        const value = context.raw;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                        return ` ${context.label}: ${new Intl.NumberFormat('fa-IR').format(value)} تومان (${percentage}%)`;
+                    }
+                }
+            }
         },
-        startDate: moment().subtract(29, 'days'),
-        endDate: moment(),
-        ranges: {
-            'امروز': [moment(), moment()],
-            'دیروز': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-            '۷ روز اخیر': [moment().subtract(6, 'days'), moment()],
-            '۳۰ روز اخیر': [moment().subtract(29, 'days'), moment()],
-            'این ماه': [moment().startOf('month'), moment().endOf('month')],
-            'ماه قبل': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
-        }
-    });
+        cutout: '60%',
+        radius: '90%'
+    }
+});
 
-    // فعال‌سازی تولتیپ‌ها
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    });
-    </script>
-    @endpush
+// تغییر دوره زمانی نمودار روند
+document.getElementById('trendPeriodSelect').addEventListener('change', function() {
+    updateTrendChart(this.value);
+});
+
+// تابع فرمت‌بندی اعداد
+function number_format(number) {
+    return new Intl.NumberFormat('fa-IR').format(number);
+}
+
+// نمایش مودال پرداخت
+function showPaymentModal(saleId) {
+    document.getElementById('payment-sale-id').value = saleId;
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+}
+
+// تنظیمات Date Range Picker
+$('.daterange').daterangepicker({
+    locale: {
+        format: 'jYYYY/jMM/jDD',
+        separator: ' - ',
+        applyLabel: 'اعمال',
+        cancelLabel: 'انصراف',
+        fromLabel: 'از',
+        toLabel: 'تا',
+        customRangeLabel: 'بازه دلخواه',
+        weekLabel: 'هفته',
+        daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
+        monthNames: [
+            'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        ],
+        firstDay: 6
+    },
+    startDate: moment().subtract(29, 'days'),
+    endDate: moment(),
+    ranges: {
+        'امروز': [moment(), moment()],
+        'دیروز': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+        '۷ روز اخیر': [moment().subtract(6, 'days'), moment()],
+        '۳۰ روز اخیر': [moment().subtract(29, 'days'), moment()],
+        'این ماه': [moment().startOf('month'), moment().endOf('month')],
+        'ماه قبل': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+    }
+});
+
+// فعال‌سازی تولتیپ‌ها
+const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+
+// نمایش نمودار اولیه
+updateTrendChart('1_month');
+</script>
+@endpush
