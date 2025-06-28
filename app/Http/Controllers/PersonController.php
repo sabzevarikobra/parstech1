@@ -14,6 +14,7 @@ use App\Models\CustomerPurchase;
 class PersonController extends Controller
 {
 
+
     public function getCities($province_id)
     {
         try {
@@ -36,21 +37,31 @@ class PersonController extends Controller
     public function nextCode()
     {
         try {
-            $lastPerson = Person::where('accounting_code', 'like', 'persons=%')
-                ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS UNSIGNED) DESC')
+            // پیدا کردن آخرین کد با استفاده از عبارت منظم
+            $lastPerson = Person::whereRaw("accounting_code REGEXP '^persons=-[0-9]+$'")
+                ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS SIGNED) DESC')
                 ->first();
 
-            $nextNumber = 1001; // شماره پیش‌فرض
+            \Log::info('Last person found:', ['person' => $lastPerson]);
 
-            if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
-                $nextNumber = intval($matches[1]) + 1;
+            $nextNumber = 1001; // شماره پیش‌فرض اولیه
+
+            if ($lastPerson) {
+                // استخراج شماره از کد حسابداری
+                if (preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
+                    $lastNumber = intval($matches[1]);
+                    $nextNumber = $lastNumber + 1;
+                }
             }
+
+            \Log::info('Next number calculated:', ['next_number' => $nextNumber]);
 
             $nextCode = 'persons=-' . $nextNumber;
 
             return response()->json([
                 'success' => true,
-                'code' => $nextCode
+                'code' => $nextCode,
+                'last_code' => $lastPerson ? $lastPerson->accounting_code : null
             ]);
         } catch (\Exception $e) {
             \Log::error('Error generating next code: ' . $e->getMessage());
@@ -525,10 +536,104 @@ class PersonController extends Controller
     }
 
 
+    //ویرایش اشخاص
+    public function edit(Person $person)
+    {
+        $provinces = Province::all();
+        return view('persons.edit', compact('person', 'provinces'));
+    }
 
 
+    public function update(Request $request, Person $person)
+    {
+        $rules = [
+            'type' => 'required|in:customer,supplier,shareholder,employee',
+            'province' => 'required|exists:provinces,id',
+            'city' => 'required|exists:cities,id',
+            'address' => 'required|string',
+            'country' => 'required|string',
+        ];
 
+        if ($request->input('type') == 'supplier') {
+            $rules['company_name'] = 'required|string';
+        } else {
+            $rules['first_name'] = 'required|string';
+            $rules['last_name'] = 'required|string';
+        }
 
+        $optionalFields = [
+            'nickname', 'credit_limit', 'price_list', 'tax_type', 'national_code', 'economic_code',
+            'registration_number', 'branch_code', 'description', 'postal_code', 'phone', 'mobile', 'fax',
+            'phone1', 'phone2', 'phone3', 'email', 'website', 'birth_date', 'marriage_date', 'join_date',
+            'company_name', 'title'
+        ];
+        foreach ($optionalFields as $field) {
+            $rules[$field] = 'nullable';
+        }
+
+        $validated = $request->validate($rules);
+
+        try {
+            DB::beginTransaction();
+
+            // تبدیل تاریخ‌های شمسی به میلادی
+            foreach (['birth_date', 'marriage_date', 'join_date'] as $dateField) {
+                if ($request->has($dateField) && $request->$dateField) {
+                    try {
+                        $request[$dateField] = Jalalian::fromFormat('Y/m/d', $request->$dateField)->toCarbon()->toDateString();
+                    } catch (\Exception $e) {
+                        $request[$dateField] = null;
+                    }
+                }
+            }
+
+            $person->update($request->all());
+
+            // به‌روزرسانی حساب‌های بانکی
+            if ($request->has('bank_accounts')) {
+                $person->bankAccounts()->delete(); // حذف حساب‌های قبلی
+                $bankAccounts = [];
+                foreach ($request->bank_accounts as $account) {
+                    if (!empty($account['bank_name'])) {
+                        $bankAccounts[] = [
+                            'bank_name' => $account['bank_name'],
+                            'branch' => $account['branch'] ?? null,
+                            'account_number' => $account['account_number'] ?? null,
+                            'card_number' => $account['card_number'] ?? null,
+                            'iban' => $account['iban'] ?? null,
+                        ];
+                    }
+                }
+                if (!empty($bankAccounts)) {
+                    $person->bankAccounts()->createMany($bankAccounts);
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('persons.show', $person)->with('success', 'اطلاعات شخص با موفقیت به‌روزرسانی شد.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function destroy(Person $person)
+    {
+        try {
+            // بررسی وابستگی‌ها
+            if ($person->sales()->exists()) {
+                return back()->with('error', 'این شخص دارای فاکتور فروش است و نمی‌توان آن را حذف کرد.');
+            }
+
+            $person->bankAccounts()->delete();
+            $person->notes()->delete();
+            $person->delete();
+
+            return redirect()->route('persons.index')->with('success', 'شخص با موفقیت حذف شد.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'خطا در حذف شخص: ' . $e->getMessage());
+        }
+    }
 
 
 

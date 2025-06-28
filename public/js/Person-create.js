@@ -4,13 +4,17 @@ function getNextCode() {
         url: '/api/persons/next-code',
         method: 'GET',
         success: function(response) {
-            if (response.code) {
+            console.log('Next code response:', response); // برای دیباگ
+            if (response.success && response.code) {
                 $('#accounting_code').val(response.code);
+            } else {
+                console.error('Error getting next code:', response);
+                $('#accounting_code').val('');
             }
         },
         error: function(xhr, status, error) {
             console.error('Error fetching next code:', error);
-            $('#accounting_code').val('person-10001');
+            $('#accounting_code').val('');
         }
     });
 }
@@ -18,19 +22,26 @@ function getNextCode() {
 $(document).ready(function () {
     // ساخت input و سوییچ کد حسابداری در ابتدای فرم
     const switchHtml = `
-        <div class="accounting-code-container">
-            <input type="text" name="accounting_code" id="accounting_code" class="form-control" required readonly>
-            <label class="switch">
-                <input type="checkbox" id="autoCodeSwitch" checked>
-                <span class="slider"></span>
-            </label>
-
+    <div class="accounting-code-container">
+        <div class="input-group">
+            <input type="text" name="accounting_code" id="accounting_code" class="form-control" required>
+            <div class="input-group-append">
+                <div class="input-group-text">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="autoCodeSwitch" checked>
+                        <label class="custom-control-label" for="autoCodeSwitch"></label>
+                    </div>
+                </div>
+            </div>
         </div>
+        <small class="form-text text-muted">برای تغییر دستی کد، سوییچ را غیرفعال کنید</small>
+    </div>
     `;
     $('#accounting_code_container').html(switchHtml);
 
     const $accountingCodeInput = $('#accounting_code');
     const $autoSwitch = $('#autoCodeSwitch');
+
 
     // مقداردهی اولیه اگر حالت خودکار است
     if ($autoSwitch.is(':checked')) {
@@ -48,6 +59,23 @@ $(document).ready(function () {
             $accountingCodeInput.val('').focus();
         }
     });
+
+        // اعتبارسنجی یکتا بودن کد حسابداری
+        $accountingCodeInput.on('change', function() {
+            const code = $(this).val();
+            if (code) {
+                $.get('/api/persons/check-code', { code: code }, function(response) {
+                    if (!response.available) {
+                        alert('این کد حسابداری قبلاً استفاده شده است.');
+                        if ($autoSwitch.is(':checked')) {
+                            getNextCode();
+                        } else {
+                            $accountingCodeInput.val('').focus();
+                        }
+                    }
+                });
+            }
+        });
 
     // تنظیمات تقویم شمسی
     $('.datepicker').persianDatepicker({

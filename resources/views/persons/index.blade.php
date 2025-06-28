@@ -3,6 +3,9 @@
 @section('title', 'لیست اشخاص')
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('css/sales-list.css') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+<link rel="stylesheet" href="{{ asset('css/persian-datepicker.min.css') }}">
 <style>
 .person-card {
     transition: all 0.3s ease;
@@ -296,34 +299,92 @@
     </div>
 </div>
 @endsection
-
 @push('scripts')
+<!-- به ترتیب لود شدن مهم است -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.9.2/build/moment-jalaali.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
 <script>
 $(document).ready(function() {
     // تنظیمات DateRangePicker
-    $('.daterange').daterangepicker({
+    $('#dateRange').daterangepicker({
         locale: {
-            format: 'YYYY/MM/DD',
+            format: 'jYYYY/jMM/jDD',
             separator: ' - ',
             applyLabel: 'اعمال',
-            cancelLabel: 'انصراف'
+            cancelLabel: 'انصراف',
+            fromLabel: 'از',
+            toLabel: 'تا',
+            customRangeLabel: 'بازه دلخواه',
+            weekLabel: 'هفته',
+            daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
+            monthNames: [
+                'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+            ],
+            firstDay: 6
         },
-        autoUpdateInput: false
+        autoUpdateInput: false,
+        showDropdowns: true,
+        opens: 'left'
     });
 
-    $('.daterange').on('apply.daterangepicker', function(ev, picker) {
-        $(this).val(picker.startDate.format('YYYY/MM/DD') + ' - ' + picker.endDate.format('YYYY/MM/DD'));
+    // هندل کردن انتخاب تاریخ
+    $('#dateRange').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('jYYYY/jMM/jDD') + ' - ' + picker.endDate.format('jYYYY/jMM/jDD'));
     });
 
-    $('.daterange').on('cancel.daterangepicker', function(ev, picker) {
+    // هندل کردن پاک کردن تاریخ
+    $('#dateRange').on('cancel.daterangepicker', function(ev, picker) {
         $(this).val('');
     });
 
-    // فعال‌سازی tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
+    // Select All functionality
+    $('#selectAll').change(function() {
+        $('.sale-checkbox').prop('checked', $(this).prop('checked'));
     });
 });
+
+function deleteSale(id) {
+    if (confirm('آیا از حذف این فاکتور اطمینان دارید؟')) {
+        axios.delete(`/sales/${id}`)
+            .then(response => {
+                if (response.data.success) {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                alert('خطا در حذف فاکتور');
+                console.error(error);
+            });
+    }
+}
+
+function printInvoice(id) {
+    window.open(`/sales/${id}/print`, '_blank');
+}
+
+function changePerPage(select) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', select.value);
+    window.location.href = url.toString();
+}
+
+// تابع تبدیل اعداد به فارسی
+function toFaNumber(str) {
+    return (str+'').replace(/[0-9]/g, function(w){return '۰۱۲۳۴۵۶۷۸۹'[+w]});
+}
+
+// تبدیل همه اعداد به فارسی
+function convertAllNumbersToFa() {
+    document.querySelectorAll('.farsi-number').forEach(function(el) {
+        el.textContent = toFaNumber(el.textContent);
+    });
+}
+
+// اجرای تبدیل اعداد بعد از لود صفحه
+document.addEventListener('DOMContentLoaded', convertAllNumbersToFa);
 </script>
 @endpush
