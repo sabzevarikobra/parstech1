@@ -172,7 +172,8 @@ class PersonController extends Controller
 
     public function store(Request $request)
     {
-        // اول اعتبارسنجی کد حسابداری
+
+            // اول اعتبارسنجی کد حسابداری
         $exists = Person::where('accounting_code', $request->accounting_code)->exists();
         if ($exists) {
             return back()
@@ -181,41 +182,100 @@ class PersonController extends Controller
         }
         \Log::info('Storing new person with code:', ['code' => $request->accounting_code]);
 
-        DB::beginTransaction();
+
+
+        \Log::info('DATE_INPUTS', [
+            'birth_date' => $request->birth_date,
+            'marriage_date' => $request->marriage_date,
+            'join_date' => $request->join_date,
+        ]);
+
+        // تبدیل تاریخ شمسی به میلادی
+        foreach (['join_date', 'birth_date', 'marriage_date'] as $dateField) {
+            if ($request->has($dateField) && $request->$dateField) {
+                try {
+                    if (strpos($request->$dateField, '-') !== false) {
+                        $request[$dateField] = Jalalian::fromFormat('Y-m-d', $request->$dateField)->toCarbon()->toDateString();
+                    } elseif (strpos($request->$dateField, '/') !== false) {
+                        $request[$dateField] = Jalalian::fromFormat('Y/m/d', $request->$dateField)->toCarbon()->toDateString();
+                    }
+                } catch (\Exception $e) {
+                    $request[$dateField] = null;
+                }
+            }
+        }
+
+        $rules = [
+            'accounting_code' => 'required|string|unique:persons,accounting_code',
+            'type' => 'required|in:customer,supplier,shareholder,employee',
+            'province' => 'required|exists:provinces,id',
+            'city' => 'required|exists:cities,id',
+            'address' => 'required|string',
+            'country' => 'required|string',
+        ];
+
+
+        if ($request->input('type') == 'supplier') {
+            $rules['company_name'] = 'required|string';
+        } else {
+            $rules['first_name'] = 'required|string';
+            $rules['last_name'] = 'required|string';
+        }
+
+        $optionalFields = [
+            'nickname', 'credit_limit', 'price_list', 'tax_type', 'national_code', 'economic_code',
+            'registration_number', 'branch_code', 'description', 'postal_code', 'phone', 'mobile', 'fax',
+            'phone1', 'phone2', 'phone3', 'email', 'website', 'birth_date', 'marriage_date', 'join_date',
+            'company_name', 'title'
+        ];
+        foreach ($optionalFields as $field) {
+            $rules[$field] = 'nullable';
+        }
+
+        $validated = $request->validate($rules);
+
         try {
+            DB::beginTransaction();
+
             // اگر کد خودکار فعال است و کاربر دستی کد نداده، دوباره از دیتابیس بگیر
             if ($request->input('auto_code', '1') === '1') {
-                // تولید کد جدید با حلقه برای اطمینان از یکتا بودن
-                do {
-                    $lastPerson = Person::whereRaw("accounting_code REGEXP '^persons=-[0-9]+$'")
-                        ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS SIGNED) DESC')
-                        ->lockForUpdate()
-                        ->first();
+                $lastPerson = Person::whereRaw("accounting_code REGEXP '^persons=-[0-9]+$'")
+                    ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS SIGNED) DESC')
+                    ->first();
 
-                    if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
-                        $nextNumber = intval($matches[1]) + 1;
-                    } else {
-                        $nextNumber = 1001;
-                    }
-
-                    $nextCode = 'persons=-' . $nextNumber;
-                } while (Person::where('accounting_code', $nextCode)->exists());
-
-                $request->merge(['accounting_code' => $nextCode]);
+                if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
+                    $nextNumber = intval($matches[1]) + 1;
+                } else {
+                    $nextNumber = 1001;
+                }
+                $request->merge(['accounting_code' => 'persons=-' . $nextNumber]);
             }
 
-            // ایجاد شخص جدید
             $person = Person::create($request->all());
+
+            // ذخیره حساب‌های بانکی (اگر ارسال شده)
+            if ($request->has('bank_accounts')) {
+                $bankAccounts = [];
+                foreach ($request->bank_accounts as $account) {
+                    if (!empty($account['bank_name'])) {
+                        $bankAccounts[] = [
+                            'bank_name' => $account['bank_name'],
+                            'branch' => $account['branch'] ?? null,
+                            'account_number' => $account['account_number'] ?? null,
+                            'card_number' => $account['card_number'] ?? null,
+                            'iban' => $account['iban'] ?? null,
+                        ];
+                    }
+                }
+                if (!empty($bankAccounts)) {
+                    $person->bankAccounts()->createMany($bankAccounts);
+                }
+            }
 
             DB::commit();
             return redirect()->route('persons.index')->with('success', 'شخص جدید با موفقیت ایجاد شد.');
-
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error storing person:', [
-                'error' => $e->getMessage(),
-                'code' => $request->accounting_code
-            ]);
             return back()->withInput()->withErrors(['error' => $e->getMessage()]);
         }
     }

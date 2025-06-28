@@ -126,7 +126,7 @@
         <div class="col-lg-9">
             <form id="personForm" action="{{ route('persons.store') }}" method="POST">
                 @csrf
-
+                <input type="hidden" name="auto_code" value="1" id="auto_code_input">
                 <ul class="nav nav-tabs" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" data-bs-toggle="tab" href="#main">
@@ -259,13 +259,10 @@ $(document).ready(function() {
     $('#personForm').on('submit', function(e) {
         let isValid = true;
         $(this).find('[required]').each(function() {
-            if (!$(this).val()) {
-                isValid = false;
-                $(this).addClass('is-invalid');
-                // Switch to tab containing error
-                const tabId = $(this).closest('.tab-pane').attr('id');
-                $(`a[href="#${tabId}"]`).tab('show');
-                return false; // break each loop
+            if (!$('#accounting_code').val()) {
+                e.preventDefault();
+                alert('کد حسابداری نمی‌تواند خالی باشد');
+                return false;
             }
         });
 
@@ -360,7 +357,6 @@ $(document).ready(function() {
         });
     }
 
-
     // مقداردهی اولیه اگر حالت خودکار است
     const $accountingCodeInput = $('#accounting_code');
     const $autoSwitch = $('#autoCodeSwitch');
@@ -374,15 +370,16 @@ $(document).ready(function() {
 
     // رویداد تغییر سوییچ
     $autoSwitch.change(function() {
-        console.log('Switch changed:', $(this).is(':checked'));
-        if ($(this).is(':checked')) {
-            $accountingCodeInput.prop('readonly', true);
-            getNextCode();
-        } else {
-            $accountingCodeInput.prop('readonly', false);
-            $accountingCodeInput.val('').focus();
-        }
-    });
+    if ($(this).is(':checked')) {
+        $accountingCodeInput.prop('readonly', true);
+        $('#auto_code_input').val('1');
+        getNextCode();
+    } else {
+        $accountingCodeInput.prop('readonly', false);
+        $('#auto_code_input').val('0');
+        $accountingCodeInput.val('').focus();
+    }
+});
 });
 </script>
 @endpush
