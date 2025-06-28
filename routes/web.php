@@ -387,7 +387,6 @@ Route::get('/api/persons/check-code', function (Request $request) {
     ]);
     return response()->json(['available' => !$exists]);
 });
-// تولید کد جدید
-Route::get('/api/persons/next-code', [\App\Http\Controllers\PersonController::class, 'nextCode']);
+
 
 require __DIR__.'/auth.php';

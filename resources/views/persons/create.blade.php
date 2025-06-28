@@ -207,7 +207,7 @@
 $(document).ready(function() {
 
 
-    
+
     // Live Preview Update
     function updatePreview() {
         const firstName = $('input[name="first_name"]').val();
