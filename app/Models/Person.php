@@ -162,4 +162,14 @@ class Person extends Model
         return $this->hasMany(Note::class);
     }
 
+    public function getTypeLabelAttribute()
+    {
+        return [
+            'customer'    => 'مشتری',
+            'supplier'    => 'تأمین‌کننده',
+            'shareholder' => 'سهامدار',
+            'employee'    => 'کارمند',
+        ][$this->type] ?? $this->type;
+    }
+
 }

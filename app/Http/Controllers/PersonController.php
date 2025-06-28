@@ -592,18 +592,62 @@ class PersonController extends Controller
     }
 
     // بدهکاران
-    public function debtors()
+    public function debtors(Request $request)
     {
-        $debtors = \App\Models\Person::where('balance', '<', 0)->orderBy('balance')->get();
+        $query = \App\Models\Person::where('balance', '>', 0);
 
-        // داده‌ها برای نمودار (برای مثال: نام و مبلغ بدهی)
-        $chartData = [
-            'labels' => $debtors->pluck('full_name'),
-            'amounts' => $debtors->pluck('balance')->map(fn($v) => abs($v)), // مبالغ منفی را مثبت کن
-        ];
+        // فیلترها
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%$search%")
+                  ->orWhere('last_name', 'like', "%$search%")
+                  ->orWhere('company_name', 'like', "%$search%")
+                  ->orWhere('mobile', 'like', "%$search%");
+            });
+        }
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('date_range')) {
+            $dates = explode(' - ', $request->date_range);
+            if (count($dates) == 2) {
+                try {
+                    $start = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[0]))->startOfDay();
+                    $end = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[1]))->endOfDay();
+                    $query->whereBetween('created_at', [$start, $end]);
+                } catch (\Exception $e) {
+                    // نادیده بگیر
+                }
+            }
+        }
 
-        return view('persons.debtors', compact('debtors', 'chartData'));
+        // صفحه‌بندی بهتر برای جدول
+        $debtors = $query->orderByDesc('balance')->paginate(50);
+
+        // آمار کلی
+        $totalDebt = \App\Models\Person::where('balance', '>', 0)->sum('balance');
+        $debtorsCount = \App\Models\Person::where('balance', '>', 0)->count();
+
+        return view('persons.debtors', compact('debtors', 'totalDebt', 'debtorsCount'));
     }
+
+    // API برای جستجوی AJAX بدهکاران (برای انتخاب چندتایی و جمع بدهی)
+public function debtorsAjax(Request $request)
+{
+    $ids = $request->input('ids', []);
+    $persons = \App\Models\Person::whereIn('id', $ids)
+        ->get(['id','full_name','mobile','balance','total_sales','total_purchases','accounting_code','type','status']);
+
+    $total = $persons->sum('balance');
+    return response()->json([
+        'persons' => $persons,
+        'total' => $total
+    ]);
+}
 
 
 

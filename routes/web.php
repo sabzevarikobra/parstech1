@@ -136,6 +136,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/suppliers', [PersonController::class, 'suppliers'])->name('suppliers');
         // ---- بدهکاران ----
         Route::get('/debtors', [App\Http\Controllers\PersonController::class, 'debtors'])->name('debtors');
+        Route::get('/debtors/ajax', [App\Http\Controllers\PersonController::class, 'debtorsAjax'])->name('debtors.ajax');
+
     });
 
     // Sales
