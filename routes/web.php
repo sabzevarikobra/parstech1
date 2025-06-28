@@ -373,5 +373,9 @@ Route::get('/categories/table-tree', [\App\Http\Controllers\CategoryController::
 Route::get('/persons/province/{province}/cities', [PersonController::class, 'getCities'])->name('persons.cities');
 
 Route::get('/api/persons/next-code', [PersonController::class, 'nextCode'])->name('persons.next-code');
+Route::post('persons/{person}/notes', [PersonController::class, 'storeNote'])->name('person.notes.store');
+
+Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+
 
 require __DIR__.'/auth.php';

@@ -54,6 +54,17 @@
     border-radius: 10px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.05);
 }
+
+.avatar-initial {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+}
 </style>
 @endpush
 
@@ -94,7 +105,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 مجموع معاملات</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ number_format($totalTransactions) }} ریال
+                                {{ number_format($totalTransactions) }} تومان
                             </div>
                         </div>
                         <div class="col-auto">
@@ -182,15 +193,15 @@
 
     <!-- Persons List -->
     <div class="table-responsive">
-        <table class="table table-hover">
+        <table class="table table-hover align-middle">
             <thead class="bg-light">
                 <tr>
                     <th>کد</th>
                     <th>نام و نام خانوادگی</th>
                     <th>نوع</th>
                     <th>موبایل</th>
-                    <th>مجموع خرید</th>
-                    <th>مجموع فروش</th>
+                    <th>مجموع پرداختی‌ها</th>
+                    <th>مجموع خریدها</th>
                     <th>مانده حساب</th>
                     <th>آخرین تراکنش</th>
                     <th>عملیات</th>
@@ -198,61 +209,74 @@
             </thead>
             <tbody>
                 @forelse($persons as $person)
-                    <tr class="person-type-{{ $person->type }}">
+                    <tr>
                         <td>{{ $person->accounting_code }}</td>
                         <td>
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center gap-2">
                                 <div class="avatar-initial rounded-circle me-2
-                                    bg-{{ $person->type == 'customer' ? 'primary' :
-                                         ($person->type == 'supplier' ? 'success' :
-                                         ($person->type == 'employee' ? 'warning' : 'danger')) }}">
-                                    {{ substr($person->first_name, 0, 1) }}
-                                </div>
+                                {{ $person->type == 'shareholder' ? 'bg-primary' :
+                                ($person->type == 'customer' ? 'bg-danger' : 'bg-secondary') }}">
+                                {{ !empty($person->first_name) ? mb_substr($person->first_name, 0, 1, 'UTF-8') : 'ش' }}
+                            </div>
                                 <div>
                                     <div class="fw-bold">{{ $person->full_name }}</div>
-                                    <small class="text-muted">{{ $person->company_name }}</small>
+                                    @if($person->company_name)
+                                        <small class="text-muted">{{ $person->company_name }}</small>
+                                    @endif
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <span class="badge bg-{{ $person->type == 'customer' ? 'primary' :
-                                                   ($person->type == 'supplier' ? 'success' :
-                                                   ($person->type == 'employee' ? 'warning' : 'danger')) }}">
-                                {{ __('types.' . $person->type) }}
+                            <span class="badge bg-{{ $person->type == 'shareholder' ? 'primary' :
+                                                   ($person->type == 'customer' ? 'danger' : 'secondary') }}">
+                                {{ $person->type == 'shareholder' ? 'سهامدار' :
+                                   ($person->type == 'customer' ? 'مشتری' : '') }}
                             </span>
                         </td>
                         <td>{{ $person->mobile }}</td>
-                        <td>{{ number_format($person->total_purchases) }} ریال</td>
-                        <td>{{ number_format($person->total_sales) }} ریال</td>
+                        <td>{{ number_format($person->total_purchases) }} تومان</td>
+                        <td>{{ number_format($person->total_sales) }} تومان</td>
                         <td>
                             <span class="financial-badge {{ $person->balance >= 0 ? 'positive' : 'negative' }}">
-                                {{ number_format(abs($person->balance)) }} ریال
+                                {{ number_format(abs($person->balance)) }} تومان
                                 {{ $person->balance >= 0 ? 'بستانکار' : 'بدهکار' }}
                             </span>
                         </td>
-                        <td>{{ $person->last_transaction_date ? jdate($person->last_transaction_date)->ago() : '-' }}</td>
+                        <td>{{ $person->last_transaction_at ? jdate($person->last_transaction_at)->ago() : '-' }}</td>
                         <td>
-                            <div class="btn-group">
+                            <div class="d-flex gap-1">
                                 <a href="{{ route('persons.show', $person) }}"
-                                   class="btn btn-sm btn-outline-primary">
+                                   class="btn btn-sm btn-outline-primary"
+                                   data-bs-toggle="tooltip"
+                                   title="مشاهده جزئیات">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <a href="{{ route('persons.edit', $person) }}"
-                                   class="btn btn-sm btn-outline-warning">
+                                   class="btn btn-sm btn-outline-warning"
+                                   data-bs-toggle="tooltip"
+                                   title="ویرایش">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-danger delete-person"
-                                        data-id="{{ $person->id }}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <form action="{{ route('persons.destroy', $person) }}"
+                                      method="POST"
+                                      class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                            class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="tooltip"
+                                            title="حذف"
+                                            onclick="return confirm('آیا از حذف این شخص اطمینان دارید؟')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
                         <td colspan="9" class="text-center py-4">
-                            <div class="d-flex flex-column align-items-center">
+                            <div class="empty-state">
                                 <i class="fas fa-users fa-3x text-muted mb-2"></i>
                                 <p class="text-muted">هیچ شخصی یافت نشد</p>
                             </div>
@@ -264,31 +288,11 @@
     </div>
 
     <!-- Pagination -->
-    <div class="d-flex justify-content-center mt-4">
-        {{ $persons->withQueryString()->links() }}
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">تایید حذف</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                آیا از حذف این شخص اطمینان دارید؟
-            </div>
-            <div class="modal-footer">
-                <form id="deleteForm" action="" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-danger">حذف</button>
-                </form>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div class="text-muted">
+            نمایش {{ $persons->firstItem() ?? 0 }} تا {{ $persons->lastItem() ?? 0 }} از {{ $persons->total() ?? 0 }} مورد
         </div>
+        {{ $persons->withQueryString()->links() }}
     </div>
 </div>
 @endsection
@@ -296,21 +300,29 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Date Range Picker
+    // تنظیمات DateRangePicker
     $('.daterange').daterangepicker({
         locale: {
             format: 'YYYY/MM/DD',
             separator: ' - ',
             applyLabel: 'اعمال',
             cancelLabel: 'انصراف'
-        }
+        },
+        autoUpdateInput: false
     });
 
-    // Delete Confirmation
-    $('.delete-person').click(function() {
-        const id = $(this).data('id');
-        $('#deleteForm').attr('action', `/persons/${id}`);
-        $('#deleteModal').modal('show');
+    $('.daterange').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('YYYY/MM/DD') + ' - ' + picker.endDate.format('YYYY/MM/DD'));
+    });
+
+    $('.daterange').on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+    });
+
+    // فعال‌سازی tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     });
 });
 </script>
