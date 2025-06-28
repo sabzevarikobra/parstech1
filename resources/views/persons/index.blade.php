@@ -142,11 +142,17 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                بدهکاران</div>
+                                بدهکاران
+                            </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 <a href="{{ route('persons.debtors') }}">
                                     {{ $debtorsCount }}
                                 </a>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    لیست <a href="{{ route('persons.debtors') }}" class="text-warning text-decoration-underline">بدهکاران</a> را ببینید.
+                                </small>
                             </div>
                         </div>
                         <div class="col-auto">

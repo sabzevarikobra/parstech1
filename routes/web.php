@@ -134,7 +134,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/store', [PersonController::class, 'store'])->name('store');
         Route::get('/customers', [PersonController::class, 'customers'])->name('customers');
         Route::get('/suppliers', [PersonController::class, 'suppliers'])->name('suppliers');
-
+        // ---- بدهکاران ----
+        Route::get('/debtors', [App\Http\Controllers\PersonController::class, 'debtors'])->name('debtors');
     });
 
     // Sales
@@ -387,7 +388,5 @@ Route::get('/api/persons/check-code', function (Request $request) {
     return response()->json(['available' => !$exists]);
 });
 
-// بدهکاران
-Route::get('/persons/debtors', [App\Http\Controllers\PersonController::class, 'debtors'])->name('persons.debtors');
 
 require __DIR__.'/auth.php';
