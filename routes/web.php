@@ -387,5 +387,7 @@ Route::get('/api/persons/check-code', function (Request $request) {
     return response()->json(['available' => !$exists]);
 });
 
+// بدهکاران
+Route::get('/persons/debtors', [App\Http\Controllers\PersonController::class, 'debtors'])->name('persons.debtors');
 
 require __DIR__.'/auth.php';

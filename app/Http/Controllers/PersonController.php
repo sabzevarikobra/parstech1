@@ -115,7 +115,8 @@ class PersonController extends Controller
     $activeCustomers = Person::where('type', 'customer')
                            ->where('status', 'active')
                            ->count();
-    $debtorsCount = Person::where('balance', '<', 0)->count();
+
+                           $debtors = Person::where('balance', '>', 0)->orderByDesc('balance')->get();
 
     // دریافت لیست اشخاص با اطلاعات مالی
     $persons = $query->latest()
@@ -589,7 +590,19 @@ class PersonController extends Controller
         }
     }
 
+    // بدهکاران
+    public function debtors()
+    {
+        $debtors = \App\Models\Person::where('balance', '<', 0)->orderBy('balance')->get();
 
+        // داده‌ها برای نمودار (برای مثال: نام و مبلغ بدهی)
+        $chartData = [
+            'labels' => $debtors->pluck('full_name'),
+            'amounts' => $debtors->pluck('balance')->map(fn($v) => abs($v)), // مبالغ منفی را مثبت کن
+        ];
+
+        return view('persons.debtors', compact('debtors', 'chartData'));
+    }
 
 
 

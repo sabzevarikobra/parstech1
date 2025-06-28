@@ -143,7 +143,11 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 بدهکاران</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $debtorsCount }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                <a href="{{ route('persons.debtors') }}">
+                                    {{ $debtorsCount }}
+                                </a>
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
@@ -152,7 +156,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <!-- Search Box -->
     <div class="search-box">
