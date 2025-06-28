@@ -113,14 +113,22 @@
             <div class="preview-card" id="previewCard">
                 <div class="preview-avatar" id="previewAvatar">?</div>
                 <div class="preview-info">
-                    <h5 class="mb-3" id="previewName">{{ $person->full_name }}</h5>
-                    <p class="mb-2" id="previewCode">کد: {{ $person->accounting_code }}</p>
-                    <p class="mb-2" id="previewType">نوع: {{ $person->type == 'shareholder' ? 'سهامدار' :
-                        ($person->type == 'customer' ? 'مشتری' :
-                        ($person->type == 'supplier' ? 'تامین کننده' :
-                        ($person->type == 'employee' ? 'کارمند' : '-'))) }}</p>
-                    <p class="mb-2" id="previewMobile">موبایل: {{ $person->mobile ?: '-' }}</p>
-                    <p class="mb-0" id="previewCompany">شرکت: {{ $person->company_name ?: '-' }}</p>
+                    <h5 class="mb-3" id="previewName">نام و نام خانوادگی</h5>
+                    <p class="mb-2" id="previewCode">کد: -</p>
+                    <p class="mb-2" id="previewType">نوع: -</p>
+                    <p class="mb-2" id="previewMobile">موبایل: -</p>
+                    <p class="mb-0" id="previewCompany">شرکت: -</p>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            {{ now()->format('Y/m/d H:i:s') }}
+                        </small>
+                        <br>
+                        <small class="text-muted">
+                            <i class="fas fa-user me-1"></i>
+                            {{ auth()->user()->name ?? '-' }}
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -211,21 +219,20 @@
 
 
 
-        // Live Preview Update
-        $(document).ready(function() {
+
         // Live Preview Update
         function updatePreview() {
-            const firstName = $('input[name="first_name"]').val();
-            const lastName = $('input[name="last_name"]').val();
-            const fullName = `${firstName} ${lastName}`.trim();
+        const firstName = $('input[name="first_name"]').val();
+        const lastName = $('input[name="last_name"]').val();
+        const fullName = `${firstName} ${lastName}`.trim();
 
-            $('#previewName').text(fullName || 'نام و نام خانوادگی');
-            $('#previewAvatar').text(fullName ? fullName[0].toUpperCase() : '?');
-            $('#previewCode').text(`کد: ${$('input[name="accounting_code"]').val() || '-'}`);
-            $('#previewType').text(`نوع: ${$('select[name="type"] option:selected').text() || '-'}`);
-            $('#previewMobile').text(`موبایل: ${$('input[name="mobile"]').val() || '-'}`);
-            $('#previewCompany').text(`شرکت: ${$('input[name="company_name"]').val() || '-'}`);
-        }
+        $('#previewName').text(fullName || 'نام و نام خانوادگی');
+        $('#previewAvatar').text(fullName ? fullName[0].toUpperCase() : '?');
+        $('#previewCode').text(`کد: ${$('input[name="accounting_code"]').val() || '-'}`);
+        $('#previewType').text(`نوع: ${$('select[name="type"] option:selected').text() || '-'}`);
+        $('#previewMobile').text(`موبایل: ${$('input[name="mobile"]').val() || '-'}`);
+        $('#previewCompany').text(`شرکت: ${$('input[name="company_name"]').val() || '-'}`);
+    }
 
         // Update preview on input change
         $('#personForm').on('input change', 'input, select', updatePreview);
