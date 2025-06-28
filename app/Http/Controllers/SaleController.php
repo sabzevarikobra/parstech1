@@ -149,6 +149,10 @@ class SaleController extends Controller
                 'status'         => 'pending'
             ]);
 
+            $totalPrice = 0;
+            $totalDiscount = 0;
+            $totalTax = 0;
+
             // ثبت اقلام فاکتور
             foreach ($items as $item) {
                 $product = Product::findOrFail($item['id']);
@@ -158,28 +162,48 @@ class SaleController extends Controller
                     throw new \Exception("موجودی محصول '{$product->name}' کافی نیست.");
                 }
 
+                $quantity = $item['count'];
+                $unitPrice = $item['sell_price'];
+                $discount = $item['discount'] ?? 0;
+                $tax = ($item['tax'] ?? 0);
+                $subtotal = $quantity * $unitPrice;
+                $total = $subtotal - $discount + $tax;
+
                 // ایجاد قلم فاکتور
                 SaleItem::create([
                     'sale_id'     => $sale->id,
                     'product_id'  => $product->id,
-                    'quantity'    => $item['count'],
-                    'unit_price'  => $item['sell_price'],
-                    'discount'    => $item['discount'] ?? 0,
-                    'tax'         => ($item['tax'] ?? 0),
+                    'quantity'    => $quantity,
+                    'unit_price'  => $unitPrice,
+                    'discount'    => $discount,
+                    'tax'         => $tax,
                     'description' => $item['desc'] ?? '',
                     'unit'        => $item['unit'] ?? '',
-                    'total'       => ($item['count'] * $item['sell_price']) - ($item['discount'] ?? 0)
+                    'total'       => $total
                 ]);
+
+                $totalPrice += $subtotal;
+                $totalDiscount += $discount;
+                $totalTax += $tax;
 
                 // کم کردن موجودی
                 if ($product->type === 'product') {
-                    $product->stock -= $item['count'];
-                    $product->save();
+                    $product->decrement('stock', $quantity);
                 }
             }
 
-            // محاسبه مجدد مبالغ فاکتور
-            $sale->calculateTotals();
+            // به‌روزرسانی مبالغ فاکتور
+            $sale->update([
+                'total_price' => $totalPrice,
+                'discount' => $totalDiscount,
+                'tax' => $totalTax,
+                'final_amount' => $totalPrice - $totalDiscount + $totalTax
+            ]);
+
+            // به‌روزرسانی اطلاعات مالی مشتری
+            if ($customer = Person::find($request->customer_id)) {
+                $customer->updateFinancials();
+            }
 
             DB::commit();
             return redirect()->route('sales.show', $sale)->with('success', 'فاکتور با موفقیت ثبت شد.');

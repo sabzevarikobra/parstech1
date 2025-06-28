@@ -120,12 +120,16 @@
                         <div class="input-group">
                             <input type="text" class="form-control" id="customer_search"
                                    placeholder="جستجوی مشتری..." value="{{ old('customer_name') }}">
-                            <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}" required>
+                            <input type="hidden" name="customer_id" id="customer_id"
+                                   value="{{ old('customer_id') }}" required>
                             <button type="button" class="btn btn-success" id="addCustomerBtn">
-                                <i class="fa fa-plus"></i>
+                                <i class="fas fa-plus"></i>
                             </button>
                         </div>
                         <div id="customer-search-results" class="dropdown-menu w-100"></div>
+                        @error('customer_id')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
 
@@ -212,6 +216,37 @@
             $('#issued_at_jalali').val(miladi);
         }
         $('#issued_at_jalali').prop('readonly', true).css('background', '#eee').css('cursor', 'not-allowed');
+    });
+        $(document).ready(function() {
+        $('#customer_search').on('input', function() {
+            const query = $(this).val();
+            if (query.length < 2) return;
+
+            $.get('/api/customers/search', { q: query }, function(data) {
+                const results = $('#customer-search-results');
+                results.empty();
+
+                data.forEach(customer => {
+                    results.append(
+                        `<a class="dropdown-item" href="#" data-id="${customer.id}">
+                            ${customer.name}
+                        </a>`
+                    );
+                });
+
+                results.show();
+            });
+        });
+
+        $(document).on('click', '#customer-search-results .dropdown-item', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            const name = $(this).text();
+
+            $('#customer_id').val(id);
+            $('#customer_search').val(name);
+            $('#customer-search-results').hide();
+        });
     });
     </script>
 @endsection

@@ -61,20 +61,34 @@
         <!-- اطلاعات مشتری -->
         <div class="party-card animate-fade-in" style="animation-delay: 0.1s">
             <h3 class="party-title"><i class="fas fa-user"></i> <span>اطلاعات خریدار</span></h3>
-            <div class="party-info">
+            <div class="customer-info">
                 @if($sale->customer)
-                    <div class="info-row"><span class="info-label">نام و نام خانوادگی:</span><span class="info-value">{{ $sale->customer->full_name }}</span></div>
+                    <div class="info-row">
+                        <span class="info-label">نام و نام خانوادگی:</span>
+                        <span class="info-value">{{ $sale->customer->full_name }}</span>
+                    </div>
                     @if($sale->customer->mobile)
-                    <div class="info-row"><span class="info-label">شماره تماس:</span><span class="info-value farsi-number">{{ $sale->customer->mobile }}</span></div>
+                    <div class="info-row">
+                        <span class="info-label">شماره تماس:</span>
+                        <span class="info-value">{{ $sale->customer->mobile }}</span>
+                    </div>
                     @endif
                     @if($sale->customer->email)
-                    <div class="info-row"><span class="info-label">ایمیل:</span><span class="info-value">{{ $sale->customer->email }}</span></div>
+                    <div class="info-row">
+                        <span class="info-label">ایمیل:</span>
+                        <span class="info-value">{{ $sale->customer->email }}</span>
+                    </div>
                     @endif
                     @if($sale->customer->address)
-                    <div class="info-row"><span class="info-label">آدرس:</span><span class="info-value">{{ $sale->customer->address }}</span></div>
+                    <div class="info-row">
+                        <span class="info-label">آدرس:</span>
+                        <span class="info-value">{{ $sale->customer->address }}</span>
+                    </div>
                     @endif
                 @else
-                    <div class="text-muted">اطلاعات مشتری موجود نیست</div>
+                    <div class="alert alert-warning">
+                        اطلاعات مشتری موجود نیست
+                    </div>
                 @endif
             </div>
         </div>

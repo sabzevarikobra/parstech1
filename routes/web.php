@@ -317,12 +317,24 @@ Route::get('/customers/search', function (Request $request) {
 Route::get('/api/customers/search', function(Request $request) {
     $q = $request->get('q');
     $results = Person::query()
-        ->where('title', 'LIKE', "%$q%")
-        ->orWhere('company_name', 'LIKE', "%$q%")
+        ->where(function($query) use ($q) {
+            $query->where('first_name', 'LIKE', "%$q%")
+                  ->orWhere('last_name', 'LIKE', "%$q%")
+                  ->orWhere('company_name', 'LIKE', "%$q%")
+                  ->orWhere('mobile', 'LIKE', "%$q%");
+        })
         ->limit(10)
-        ->get(['id', 'title as name']);
+        ->get()
+        ->map(function($person) {
+            return [
+                'id' => $person->id,
+                'name' => $person->full_name
+            ];
+        });
     return response()->json($results);
-})->middleware(['web', 'auth']); // یا فقط 'web' اگر احراز هویت نمی‌خواهی
+})->middleware(['web', 'auth']);
+
+// یا فقط 'web' اگر احراز هویت نمی‌خواهی
 
 Route::resource('persons', \App\Http\Controllers\PersonController::class);
 Route::get('persons/next-code', [PersonController::class, 'nextCode'])->name('persons.next-code');

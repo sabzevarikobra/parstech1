@@ -45,7 +45,10 @@ class Person extends Model
     // محاسبه نام کامل
     public function getFullNameAttribute()
     {
-        return trim($this->first_name . ' ' . $this->last_name);
+        if ($this->company_name) {
+            return $this->company_name;
+        }
+        return trim($this->first_name . ' ' . $this->last_name) ?: 'بدون نام';
     }
 
     public function bankAccounts()

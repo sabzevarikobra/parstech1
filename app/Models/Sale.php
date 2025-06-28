@@ -112,7 +112,7 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
-    // ارتباط با مشتری
+    // ارتباط با مشتری (خریدار)
     public function customer()
     {
         return $this->belongsTo(Person::class, 'customer_id');
