@@ -247,6 +247,114 @@ class PersonController extends Controller
 
     public function show(Person $person)
     {
+        // آمار کلی به تفکیک محصولات و خدمات
+        $productStats = $person->sales()
+        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+        ->join('products', 'sale_items.product_id', '=', 'products.id')
+        ->where('products.type', 'product')
+        ->selectRaw('
+            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+            COUNT(DISTINCT sales.id) as purchase_count,
+            SUM(sales.paid_amount) as paid_amount
+        ')
+        ->first();
+
+        $serviceStats = $person->sales()
+        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+        ->join('products', 'sale_items.product_id', '=', 'products.id')
+        ->where('products.type', 'service')
+        ->selectRaw('
+            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+            COUNT(DISTINCT sales.id) as purchase_count,
+            SUM(sales.paid_amount) as paid_amount
+        ')
+        ->first();
+
+            // روند خرید در بازه‌های مختلف
+        $periods = [
+            '5_days' => now()->subDays(5),
+            '1_month' => now()->subMonth(),
+            '3_months' => now()->subMonths(3),
+            '6_months' => now()->subMonths(6),
+            '1_year' => now()->subYear()
+        ];
+
+        $purchaseTrends = [];
+        foreach ($periods as $key => $startDate) {
+            $trend = $person->sales()
+                ->where('created_at', '>=', $startDate)
+                ->selectRaw('
+                    DATE(created_at) as date,
+                    SUM(final_amount) as total_amount,
+                    SUM(paid_amount) as paid_amount
+                ')
+                ->groupBy('date')
+                ->get();
+
+            $purchaseTrends[$key] = [
+                'labels' => $trend->pluck('date')->map(function($date) {
+                    return jdate($date)->format('Y/m/d');
+                }),
+                'amounts' => [
+                    'total' => $trend->pluck('total_amount'),
+                    'paid' => $trend->pluck('paid_amount')
+                ]
+            ];
+        }
+
+        // محصولات و خدمات پرفروش به تفکیک
+        $topProducts = $person->sales()
+        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+        ->join('products', 'sale_items.product_id', '=', 'products.id')
+        ->where('products.type', 'product')
+        ->selectRaw('
+            products.id,
+            products.name,
+            SUM(sale_items.quantity) as total_quantity,
+            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+            COUNT(DISTINCT sales.id) as purchase_count,
+            MAX(sales.created_at) as last_purchase
+        ')
+        ->groupBy('products.id', 'products.name')
+        ->orderBy('total_amount', 'desc')
+        ->limit(5)
+        ->get();
+
+        $topServices = $person->sales()
+        ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+        ->join('products', 'sale_items.product_id', '=', 'products.id')
+        ->where('products.type', 'service')
+        ->selectRaw('
+            products.id,
+            products.name,
+            SUM(sale_items.quantity) as total_quantity,
+            SUM(sale_items.quantity * sale_items.unit_price) as total_amount,
+            COUNT(DISTINCT sales.id) as purchase_count,
+            MAX(sales.created_at) as last_purchase
+        ')
+        ->groupBy('products.id', 'products.name')
+        ->orderBy('total_amount', 'desc')
+        ->limit(5)
+        ->get();
+
+            // آمار کلی
+        $totalStats = [
+            'total_amount' => $productStats->total_amount + $serviceStats->total_amount,
+            'total_paid' => $productStats->paid_amount + $serviceStats->paid_amount,
+            'remaining' => ($productStats->total_amount + $serviceStats->total_amount) -
+                        ($productStats->paid_amount + $serviceStats->paid_amount)
+        ];
+
+        return view('persons.show', compact(
+            'person',
+            'productStats',
+            'serviceStats',
+            'totalStats',
+            'purchaseTrends',
+            'topProducts',
+            'topServices'
+        ));
+
         // آمار کلی
         $totalPurchases = $person->sales()->count();
         $totalAmount = $person->sales()->sum('final_amount');

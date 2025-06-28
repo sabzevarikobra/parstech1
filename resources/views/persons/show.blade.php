@@ -574,10 +574,7 @@
 <script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.9.2/build/moment-jalaali.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 
-<!-- Import از node_modules -->
-<script src="{{ asset('node_modules/chart.js/dist/chart.umd.js') }}"></script>
-<!-- یا اگر از vite استفاده می‌کنید -->
-@vite(['node_modules/chart.js/dist/chart.umd.js'])
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // تنظیمات Chart.js با آخرین نسخه
     const config = {
@@ -592,7 +589,7 @@
         enabled: true
     });
 
-    Chart.defaults.font.family = 'IRANSans';
+    Chart.defaults.font.family = 'AnjomanMax';
     Chart.defaults.color = '#666';
     Chart.defaults.responsive = true;
     Chart.defaults.maintainAspectRatio = false;
@@ -703,6 +700,7 @@
             radius: '90%'
         }
     });
+
 
     // تابع فرمت‌بندی اعداد
     function number_format(number) {
