@@ -594,45 +594,89 @@ class PersonController extends Controller
     // بدهکاران
     public function debtors(Request $request)
     {
-        $query = \App\Models\Person::where('balance', '>', 0);
+        $query = Person::where('balance', '>', 0);
 
-        // فیلترها
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%$search%")
-                  ->orWhere('last_name', 'like', "%$search%")
-                  ->orWhere('company_name', 'like', "%$search%")
-                  ->orWhere('mobile', 'like', "%$search%");
-            });
+        // محاسبه آمار 6 ماه اخیر
+        $sixMonthsAgo = now()->subMonths(5)->startOfMonth();
+        $monthlyStats = DB::table('persons')
+            ->where('balance', '>', 0)
+            ->where('created_at', '>=', $sixMonthsAgo)
+            ->selectRaw('
+                DATE_FORMAT(created_at, "%Y-%m") as month,
+                SUM(balance) as total_debt,
+                COUNT(*) as debtors_count,
+                AVG(balance) as average_debt
+            ')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // آماده‌سازی داده‌ها برای نمودار
+        $chartData = [
+            'labels' => [],
+            'totalDebt' => [],
+            'debtorsCount' => [],
+            'averageDebt' => []
+        ];
+
+        foreach ($monthlyStats as $stat) {
+            $jalaliDate = verta($stat->month . '-01');
+            $chartData['labels'][] = $jalaliDate->format('%B');
+            $chartData['totalDebt'][] = (int)$stat->total_debt;
+            $chartData['debtorsCount'][] = (int)$stat->debtors_count;
+            $chartData['averageDebt'][] = (int)$stat->average_debt;
         }
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        if ($request->filled('date_range')) {
-            $dates = explode(' - ', $request->date_range);
-            if (count($dates) == 2) {
-                try {
-                    $start = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[0]))->startOfDay();
-                    $end = \Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[1]))->endOfDay();
-                    $query->whereBetween('created_at', [$start, $end]);
-                } catch (\Exception $e) {
-                    // نادیده بگیر
-                }
+
+        // محاسبه درصد تغییرات
+        $trends = [
+            'totalDebt' => 0,
+            'debtorsCount' => 0,
+            'averageDebt' => 0
+        ];
+
+        if ($monthlyStats->count() >= 2) {
+            $current = $monthlyStats->last();
+            $previous = $monthlyStats->get($monthlyStats->count() - 2);
+
+            if ($previous->total_debt > 0) {
+                $trends['totalDebt'] = round((($current->total_debt - $previous->total_debt) / $previous->total_debt) * 100, 1);
+            }
+            if ($previous->debtors_count > 0) {
+                $trends['debtorsCount'] = round((($current->debtors_count - $previous->debtors_count) / $previous->debtors_count) * 100, 1);
+            }
+            if ($previous->average_debt > 0) {
+                $trends['averageDebt'] = round((($current->average_debt - $previous->average_debt) / $previous->average_debt) * 100, 1);
             }
         }
 
-        // صفحه‌بندی بهتر برای جدول
-        $debtors = $query->orderByDesc('balance')->paginate(50);
+        // اعمال فیلترها
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('first_name', 'like', "%{$request->search}%")
+                  ->orWhere('last_name', 'like', "%{$request->search}%")
+                  ->orWhere('mobile', 'like', "%{$request->search}%");
+            });
+        }
 
-        // آمار کلی
-        $totalDebt = \App\Models\Person::where('balance', '>', 0)->sum('balance');
-        $debtorsCount = \App\Models\Person::where('balance', '>', 0)->count();
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
 
-        return view('persons.debtors', compact('debtors', 'totalDebt', 'debtorsCount'));
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $totalDebt = $query->sum('balance');
+        $debtorsCount = $query->count();
+        $debtors = $query->paginate(15);
+
+        return view('persons.debtors', compact(
+            'debtors',
+            'totalDebt',
+            'debtorsCount',
+            'chartData',
+            'trends'
+        ));
     }
 
     // API برای جستجوی AJAX بدهکاران (برای انتخاب چندتایی و جمع بدهی)
