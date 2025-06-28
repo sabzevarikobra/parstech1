@@ -204,182 +204,184 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-$(document).ready(function() {
+    $(document).ready(function() {
 
 
 
-    // Live Preview Update
-    function updatePreview() {
-        const firstName = $('input[name="first_name"]').val();
-        const lastName = $('input[name="last_name"]').val();
-        const fullName = `${firstName} ${lastName}`.trim();
+        // Live Preview Update
+        function updatePreview() {
+            const firstName = $('input[name="first_name"]').val();
+            const lastName = $('input[name="last_name"]').val();
+            const fullName = `${firstName} ${lastName}`.trim();
 
-        $('#previewName').text(fullName || 'نام و نام خانوادگی');
-        $('#previewAvatar').text(fullName ? fullName[0].toUpperCase() : '?');
-        $('#previewCode').text(`کد: ${$('input[name="accounting_code"]').val() || '-'}`);
-        $('#previewType').text(`نوع: ${$('select[name="type"] option:selected').text() || '-'}`);
-        $('#previewMobile').text(`موبایل: ${$('input[name="mobile"]').val() || '-'}`);
-        $('#previewCompany').text(`شرکت: ${$('input[name="company_name"]').val() || '-'}`);
+            $('#previewName').text(fullName || 'نام و نام خانوادگی');
+            $('#previewAvatar').text(fullName ? fullName[0].toUpperCase() : '?');
+            $('#previewCode').text(`کد: ${$('input[name="accounting_code"]').val() || '-'}`);
+            $('#previewType').text(`نوع: ${$('select[name="type"] option:selected').text() || '-'}`);
+            $('#previewMobile').text(`موبایل: ${$('input[name="mobile"]').val() || '-'}`);
+            $('#previewCompany').text(`شرکت: ${$('input[name="company_name"]').val() || '-'}`);
+        }
+
+        // Update preview on input change
+        $('#personForm').on('input change', 'input, select', updatePreview);
+
+        // Initialize Preview
+        updatePreview();
+
+        // Select2 Initialization
+        $('.select2').select2({
+            theme: 'bootstrap4',
+            width: '100%'
+        });
+
+        // Persian Datepicker
+        $('.datepicker').persianDatepicker({
+            format: 'YYYY/MM/DD',
+            initialValue: false,
+            autoClose: true
+        });
+
+        // Dynamic Bank Accounts
+        let bankIndex = 0;
+        $('#addBankAccount').click(function() {
+            const template = $('#bankAccountTemplate').html();
+            const newRow = template.replace(/INDEX/g, bankIndex++);
+            $('#bankAccountsContainer').append(newRow);
+        });
+
+        $(document).on('click', '.removeBankAccount', function() {
+            $(this).closest('.bank-account-row').fadeOut(300, function() {
+                $(this).remove();
+            });
+        });
+
+        // Form Validation
+        $('#personForm').on('submit', function(e) {
+            let isValid = true;
+            $(this).find('[required]').each(function() {
+                if (!$('#accounting_code').val()) {
+                    e.preventDefault();
+                    alert('کد حسابداری نمی‌تواند خالی باشد');
+                    return false;
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                alert('لطفاً همه فیلدهای الزامی را پر کنید.');
+            }
+        });
+
+            // تنظیمات استان و شهر
+            $('#province_select').on('change', function() {
+            const provinceId = $(this).val();
+            const citySelect = $('#city_select');
+
+            // پاک کردن شهرهای قبلی
+            citySelect.empty().prop('disabled', true);
+
+            if (provinceId) {
+                // نمایش loading
+                citySelect.html('<option value="">در حال دریافت شهرها...</option>');
+
+                // درخواست Ajax
+                $.ajax({
+                    url: `/persons/province/${provinceId}/cities`,
+                    method: 'GET',
+                    success: function(response) {
+                        citySelect.empty().prop('disabled', false);
+                        citySelect.append('<option value="">انتخاب شهر</option>');
+
+                        // اضافه کردن شهرها
+                        response.forEach(function(city) {
+                            citySelect.append(`<option value="${city.id}">${city.text}</option>`);
+                        });
+
+                        // اگر مقدار قبلی وجود داشت
+                        @if(old('city'))
+                            citySelect.val('{{ old("city") }}');
+                        @endif
+                    },
+                    error: function() {
+                        citySelect.html('<option value="">خطا در دریافت شهرها</option>');
+                        console.error('خطا در دریافت لیست شهرها');
+                    }
+                });
+            } else {
+                citySelect.html('<option value="">ابتدا استان را انتخاب کنید</option>');
+            }
+        });
+
+        // اگر از قبل استانی انتخاب شده بود (مثلا در حالت edit یا old input)
+        @if(old('province'))
+            $('#province_select').trigger('change');
+        @endif
+
+        function getNextCode() {
+        console.log('Fetching next code...');
+        $.ajax({
+            url: '/api/persons/next-code',
+            method: 'GET',
+            success: function(response) {
+                console.log('Next code response:', response);
+                if (response.success && response.code) {
+                    $('#accounting_code').val(response.code);
+                } else {
+                    console.error('Invalid response:', response);
+                }
+            },
+            error: function(xhr) {
+                console.error('Error fetching next code:', xhr);
+            }
+        });
     }
 
-    // Update preview on input change
-    $('#personForm').on('input change', 'input, select', updatePreview);
+        function checkCodeAvailability(code) {
+            $.ajax({
+                url: '/api/persons/check-code',
+                method: 'GET',
+                data: { code: code },
+                success: function(response) {
+                    console.log('Code availability check:', response);
+                    if (!response.available) {
+                        console.warn('Code already exists:', code);
+                        // اگر کد تکراری بود، دوباره درخواست کد جدید می‌دهیم
+                        getNextCode();
+                    }
+                }
+            });
+        }
 
-    // Initialize Preview
-    updatePreview();
+        // مقداردهی اولیه اگر حالت خودکار است
+        const $accountingCodeInput = $('#accounting_code');
+        const $autoSwitch = $('#autoCodeSwitch');
 
-    // Select2 Initialization
-    $('.select2').select2({
-        theme: 'bootstrap4',
-        width: '100%'
-    });
+        if ($autoSwitch.is(':checked')) {
+            $accountingCodeInput.prop('readonly', true);
+            getNextCode();
+        }
 
-    // Persian Datepicker
-    $('.datepicker').persianDatepicker({
-        format: 'YYYY/MM/DD',
-        initialValue: false,
-        autoClose: true
-    });
 
-    // Dynamic Bank Accounts
-    let bankIndex = 0;
-    $('#addBankAccount').click(function() {
-        const template = $('#bankAccountTemplate').html();
-        const newRow = template.replace(/INDEX/g, bankIndex++);
-        $('#bankAccountsContainer').append(newRow);
-    });
-
-    $(document).on('click', '.removeBankAccount', function() {
-        $(this).closest('.bank-account-row').fadeOut(300, function() {
-            $(this).remove();
+        // رویداد تغییر سوییچ
+        $autoSwitch.change(function() {
+            if ($(this).is(':checked')) {
+                $accountingCodeInput.prop('readonly', true);
+                $('#auto_code_input').val('1');
+                getNextCode();
+            } else {
+                $accountingCodeInput.prop('readonly', false);
+                $('#auto_code_input').val('0');
+                $accountingCodeInput.val('').focus();
+            }
         });
-    });
-
-    // Form Validation
-    $('#personForm').on('submit', function(e) {
-        let isValid = true;
-        $(this).find('[required]').each(function() {
+            // اضافه کردن اعتبارسنجی فرم
+        $('#personForm').on('submit', function(e) {
             if (!$('#accounting_code').val()) {
                 e.preventDefault();
                 alert('کد حسابداری نمی‌تواند خالی باشد');
                 return false;
             }
         });
-
-        if (!isValid) {
-            e.preventDefault();
-            alert('لطفاً همه فیلدهای الزامی را پر کنید.');
-        }
-    });
-
-        // تنظیمات استان و شهر
-        $('#province_select').on('change', function() {
-        const provinceId = $(this).val();
-        const citySelect = $('#city_select');
-
-        // پاک کردن شهرهای قبلی
-        citySelect.empty().prop('disabled', true);
-
-        if (provinceId) {
-            // نمایش loading
-            citySelect.html('<option value="">در حال دریافت شهرها...</option>');
-
-            // درخواست Ajax
-            $.ajax({
-                url: `/persons/province/${provinceId}/cities`,
-                method: 'GET',
-                success: function(response) {
-                    citySelect.empty().prop('disabled', false);
-                    citySelect.append('<option value="">انتخاب شهر</option>');
-
-                    // اضافه کردن شهرها
-                    response.forEach(function(city) {
-                        citySelect.append(`<option value="${city.id}">${city.text}</option>`);
-                    });
-
-                    // اگر مقدار قبلی وجود داشت
-                    @if(old('city'))
-                        citySelect.val('{{ old("city") }}');
-                    @endif
-                },
-                error: function() {
-                    citySelect.html('<option value="">خطا در دریافت شهرها</option>');
-                    console.error('خطا در دریافت لیست شهرها');
-                }
-            });
-        } else {
-            citySelect.html('<option value="">ابتدا استان را انتخاب کنید</option>');
-        }
-    });
-
-    // اگر از قبل استانی انتخاب شده بود (مثلا در حالت edit یا old input)
-    @if(old('province'))
-        $('#province_select').trigger('change');
-    @endif
-
-    function getNextCode() {
-        console.log('Fetching next code...');
-        $.ajax({
-            url: '/api/persons/next-code',
-            method: 'GET',
-            success: function(response) {
-                console.log('Full API Response:', response);
-                if (response.success && response.code) {
-                    $('#accounting_code').val(response.code);
-                    console.log('Code set to:', response.code);
-                    // اضافه کردن بررسی تکراری بودن
-                    checkCodeAvailability(response.code);
-                } else {
-                    console.error('Invalid response:', response);
-                    $('#accounting_code').val('');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('API Error:', {xhr, status, error});
-                $('#accounting_code').val('');
-            }
-        });
-    }
-
-    function checkCodeAvailability(code) {
-        $.ajax({
-            url: '/api/persons/check-code',
-            method: 'GET',
-            data: { code: code },
-            success: function(response) {
-                console.log('Code availability check:', response);
-                if (!response.available) {
-                    console.warn('Code already exists:', code);
-                    // اگر کد تکراری بود، دوباره درخواست کد جدید می‌دهیم
-                    getNextCode();
-                }
-            }
-        });
-    }
-
-    // مقداردهی اولیه اگر حالت خودکار است
-    const $accountingCodeInput = $('#accounting_code');
-    const $autoSwitch = $('#autoCodeSwitch');
-
-    if ($autoSwitch.is(':checked')) {
-        console.log('Auto switch is checked');
-        $accountingCodeInput.prop('readonly', true);
-        getNextCode();
-    }
-
-
-    // رویداد تغییر سوییچ
-    $autoSwitch.change(function() {
-    if ($(this).is(':checked')) {
-        $accountingCodeInput.prop('readonly', true);
-        $('#auto_code_input').val('1');
-        getNextCode();
-    } else {
-        $accountingCodeInput.prop('readonly', false);
-        $('#auto_code_input').val('0');
-        $accountingCodeInput.val('').focus();
-    }
-});
 });
 </script>
 @endpush
