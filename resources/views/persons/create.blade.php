@@ -316,6 +316,45 @@ $(document).ready(function() {
     @if(old('province'))
         $('#province_select').trigger('change');
     @endif
+
+    function getNextCode() {
+        $.ajax({
+            url: '/api/persons/next-code',
+            method: 'GET',
+            success: function(response) {
+                console.log('Response:', response); // برای دیباگ
+                if (response.code) {
+                    $('#accounting_code').val(response.code);
+                    updatePreview(); // به‌روزرسانی پیش‌نمایش
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error fetching next code:', error);
+                $('#accounting_code').val('person-10001');
+            }
+        });
+    }
+
+    // مقداردهی اولیه اگر حالت خودکار است
+    const $accountingCodeInput = $('#accounting_code');
+    const $autoSwitch = $('#autoCodeSwitch');
+
+    if ($autoSwitch.is(':checked')) {
+        $accountingCodeInput.prop('readonly', true);
+        getNextCode();
+    }
+
+    // رویداد تغییر سوییچ
+    $autoSwitch.change(function() {
+        if ($(this).is(':checked')) {
+            $accountingCodeInput.prop('readonly', true);
+            getNextCode();
+        } else {
+            $accountingCodeInput.prop('readonly', false);
+            $accountingCodeInput.val('').focus();
+        }
+        updatePreview();
+    });
 });
 </script>
 @endpush

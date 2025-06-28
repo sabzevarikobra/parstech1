@@ -56,9 +56,14 @@ class Sale extends Model
         'cheque_bank',
         'cheque_due_date',
         'cheque_status',
-        'cheque_received_at'
+        'cheque_received_at',
+        'payment_method',
+        'payment_notes'
     ];
-
+    protected $dates = [
+        'issued_at',
+        'paid_at',
+    ];
     protected $casts = [
         'issued_at' => 'datetime',
         'paid_at' => 'datetime',
@@ -95,20 +100,24 @@ class Sale extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
+    // ارتباط با فروشنده
     public function seller()
     {
-        return $this->belongsTo(Seller::class, 'seller_id');
+        return $this->belongsTo(Seller::class);
     }
 
+    // ارتباط با اقلام فاکتور
     public function items()
     {
-        return $this->hasMany(SaleItem::class, 'sale_id');
+        return $this->hasMany(SaleItem::class);
     }
-    // ارتباط با مدل Person (در صورت نیاز در جای دیگر پروژه)
+
+    // ارتباط با مشتری
     public function customer()
     {
-        return $this->belongsTo(Customer::class, 'customer_id');
+        return $this->belongsTo(Person::class, 'customer_id');
     }
+
 
     public function currency()
     {
@@ -121,7 +130,7 @@ class Sale extends Model
     {
         return $this->hasMany(Installment::class);
     }
-    
+
     public function getFormattedDateAttribute()
     {
         if ($this->created_at) {

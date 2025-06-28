@@ -35,22 +35,24 @@ class PersonController extends Controller
     public function nextCode()
     {
         try {
-            // فقط کدهایی که با persons=- شروع می‌شوند را درنظر بگیر
             $lastPerson = Person::where('accounting_code', 'like', 'persons=%')
                 ->orderByRaw('CAST(SUBSTRING(accounting_code, 9) AS UNSIGNED) DESC')
                 ->first();
 
+            $nextNumber = 1001; // شماره پیش‌فرض
+
             if ($lastPerson && preg_match('/^persons=-(\d+)$/', $lastPerson->accounting_code, $matches)) {
                 $nextNumber = intval($matches[1]) + 1;
-            } else {
-                $nextNumber = 1001;
             }
+
+            $nextCode = 'persons=-' . $nextNumber;
 
             return response()->json([
                 'success' => true,
-                'code' => 'persons=-' . $nextNumber
+                'code' => $nextCode
             ]);
         } catch (\Exception $e) {
+            \Log::error('Error generating next code: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'خطا در تولید کد حسابداری',
@@ -59,10 +61,77 @@ class PersonController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $persons = Person::latest()->paginate(10);
-        return view('persons.index', compact('persons'));
+        // Query Builder اصلی
+        $query = Person::query();
+
+        // جستجو
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%")
+                  ->orWhere('mobile', 'like', "%{$search}%")
+                  ->orWhere('accounting_code', 'like', "%{$search}%");
+            });
+        }
+
+        // فیلتر نوع
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // فیلتر وضعیت
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // فیلتر تاریخ
+        if ($request->filled('date_range')) {
+            $dates = explode(' - ', $request->date_range);
+            if (count($dates) == 2) {
+                try {
+                    $start = Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[0]))->startOfDay();
+                    $end = Carbon\Carbon::createFromFormat('Y/m/d', trim($dates[1]))->endOfDay();
+                    $query->whereBetween('created_at', [$start, $end]);
+                } catch (\Exception $e) {
+                    // در صورت خطا در تاریخ، فیلتر را نادیده بگیر
+                }
+            }
+        }
+
+        // آمار کلی
+        $totalPersons = Person::count();
+
+        // مجموع کل معاملات
+        $totalTransactions = Person::sum('total_purchases');
+
+        // تعداد مشتریان فعال
+        $activeCustomers = Person::where('type', 'customer')
+                               ->where('status', 'active')
+                               ->count();
+
+        // تعداد بدهکاران
+        $debtorsCount = Person::where('balance', '<', 0)->count();
+
+        // دریافت لیست اشخاص با اطلاعات مالی
+        $persons = $query->latest()
+                        ->paginate(10)
+                        ->through(function ($person) {
+                            // محاسبه نام کامل
+                            $person->full_name = $person->first_name . ' ' . $person->last_name;
+                            return $person;
+                        });
+
+        return view('persons.index', compact(
+            'persons',
+            'totalPersons',
+            'totalTransactions',
+            'activeCustomers',
+            'debtorsCount'
+        ));
     }
 
     public function create()

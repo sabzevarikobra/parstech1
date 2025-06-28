@@ -12,12 +12,18 @@ class Person extends Model
     protected $table = 'persons';
 
     protected $fillable = [
-        'accounting_code', 'type', 'first_name', 'last_name', 'nickname', 'credit_limit', 'price_list', 'tax_type',
+        'accounting_code','total_purchases', 'last_transaction_at', 'total_sales', 'balance', 'status','type', 'first_name', 'last_name', 'nickname', 'credit_limit', 'price_list', 'tax_type',
         'national_code', 'economic_code', 'registration_number', 'branch_code', 'description', 'address', 'country',
         'province', 'city', 'postal_code', 'phone', 'mobile', 'fax', 'phone1', 'phone2', 'phone3', 'email', 'website',
         'birth_date', 'marriage_date', 'join_date', 'company_name', 'title'
     ];
 
+    protected $casts = [
+        'total_purchases' => 'decimal:2',
+        'total_sales' => 'decimal:2',
+        'balance' => 'decimal:2',
+        'last_transaction_at' => 'datetime',
+    ];
 
 
     protected $appends = ['display_name'];
@@ -36,6 +42,7 @@ class Person extends Model
         return $this->nickname ?? 'بدون نام';
     }
 
+    // محاسبه نام کامل
     public function getFullNameAttribute()
     {
         return trim($this->first_name . ' ' . $this->last_name);
@@ -71,14 +78,27 @@ class Person extends Model
         return $this->hasMany(Invoice::class, 'customer_id');
     }
 
+    // ارتباط با فروش‌ها
     public function sales()
     {
         return $this->hasMany(Sale::class, 'customer_id');
     }
 
+    public function lastTransaction()
+    {
+        return $this->hasOne(Transaction::class)->latest();
+    }
+
+    // ارتباط با خریدها
     public function purchases()
     {
-        return $this->hasMany(Sale::class, 'customer_id');
+        return $this->hasMany(Purchase::class, 'customer_id');
+    }
+
+    // محاسبه مانده حساب
+    public function getBalanceAttribute()
+    {
+        return ($this->total_sales ?? 0) - ($this->total_purchases ?? 0);
     }
 
     public function purchasesTotal()
@@ -101,4 +121,16 @@ class Person extends Model
         return $this->belongsToMany(\App\Models\Product::class, 'product_shareholder', 'person_id', 'product_id')
             ->withPivot('percent');
     }
+
+    // Helper method برای به‌روزرسانی مبالغ
+    public function updateFinancials()
+    {
+        // این متد را می‌توانید بعد از هر تراکنش صدا بزنید
+        $this->total_purchases = $this->purchases()->sum('amount') ?? 0;
+        $this->total_sales = $this->sales()->sum('amount') ?? 0;
+        $this->balance = $this->total_sales - $this->total_purchases;
+        $this->last_transaction_at = now();
+        $this->save();
+    }
+
 }

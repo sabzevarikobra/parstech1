@@ -3,28 +3,21 @@
         <div class="row g-3">
             <!-- کد حسابداری -->
             <div class="col-md-3">
-                <div class="form-group">
+                <div class="accounting-code-container">
                     <label class="form-label required-field">کد حسابداری</label>
                     <div class="input-group">
-                        <input type="text" name="accounting_code"
-                               id="accounting_code"
+                        <input type="text" name="accounting_code" id="accounting_code"
                                class="form-control @error('accounting_code') is-invalid @enderror"
-                               value="{{ old('accounting_code') }}"
-                               required
-                               {{ old('auto_code', '1') === '1' ? 'readonly' : '' }}>
+                               value="{{ old('accounting_code') }}" required readonly>
                         <div class="input-group-append">
                             <div class="form-check form-switch ms-2 mt-2">
-                                <input type="checkbox" class="form-check-input"
-                                       id="autoCodeSwitch"
-                                       name="auto_code"
-                                       value="1"
-                                       {{ old('auto_code', '1') === '1' ? 'checked' : '' }}>
+                                <input type="checkbox" class="form-check-input" id="autoCodeSwitch" checked>
                                 <label class="form-check-label" for="autoCodeSwitch">کد خودکار</label>
                             </div>
                         </div>
                     </div>
                     @error('accounting_code')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             </div>

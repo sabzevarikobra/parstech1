@@ -350,6 +350,6 @@ Route::get('/categories/table-tree', [\App\Http\Controllers\CategoryController::
 // اضافه کردن این route
 Route::get('/persons/province/{province}/cities', [PersonController::class, 'getCities'])->name('persons.cities');
 
-
+Route::get('/api/persons/next-code', [PersonController::class, 'nextCode'])->name('persons.next-code');
 
 require __DIR__.'/auth.php';
