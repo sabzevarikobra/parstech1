@@ -613,20 +613,19 @@
 @endsection
 
 @push('scripts')
+<!-- ترتیب لود شدن اسکریپت‌ها مهم است -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.9.2/build/moment-jalaali.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const chartData = {!! $chartDataJson !!};
-    const trends = {!! $trendsJson !!};
-
-    console.log('Chart Data:', chartData); // برای دیباگ
-    console.log('Trends:', trends);        // برای دیباگ
-    // --- تنظیمات مشترک نمودارها ---
+    // داده‌های نمودار از کنترلر
+    const chartData = @json($chartData);
+    const trends = @json($trends);
 
     // تنظیمات مشترک نمودارها
     const commonOptions = {
@@ -635,16 +634,12 @@ document.addEventListener('DOMContentLoaded', function() {
         plugins: {
             legend: { display: false },
             tooltip: {
-                enabled: true,
-                mode: 'index',
-                intersect: false,
                 rtl: true,
                 titleAlign: 'right',
                 bodyAlign: 'right',
                 callbacks: {
                     label: function(context) {
-                        let value = context.raw;
-                        return new Intl.NumberFormat('fa-IR').format(value) + ' تومان';
+                        return new Intl.NumberFormat('fa-IR').format(context.raw) + ' تومان';
                     }
                 }
             }
@@ -660,104 +655,116 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     };
-            y: {
-                display: true,
-                grid: {
-                    color: 'rgba(0,0,0,0.05)',
-                    drawBorder: false
-                },
-                ticks: {
-                    color: '#6c757d',
-                    font: { family: 'IRANSans' },
-                    callback: function(value) {
-                        return new Intl.NumberFormat('fa-IR').format(value);
-                    }
-                }
-            }
-        },
-        interaction: {
-            intersect: false,
-            mode: 'index'
-        },
-        elements: {
-            line: {
-                tension: 0.4,
-                borderWidth: 2
+
+    try {
+        // نمودار مجموع بدهی
+        new Chart(document.getElementById('totalDebtChart'), {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    data: chartData.totalDebt,
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    fill: true
+                }]
             },
-            point: {
-                radius: 0,
-                hoverRadius: 6
-            }
-        }
-    };
+            options: commonOptions
+        });
 
-    // --- نمودار مجموع بدهی ---
-    new Chart(document.getElementById('totalDebtChart'), {
-        type: 'line',
-        data: {
-            labels: chartData.labels,
-            datasets: [{
-                data: chartData.totalDebt,
-                borderColor: '#4e73df',
-                backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                fill: true
-            }]
-        },
-        options: commonOptions
-    });
+        // نمودار تعداد بدهکاران
+        new Chart(document.getElementById('debtorsCountChart'), {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    data: chartData.debtorsCount,
+                    borderColor: '#f6c23e',
+                    backgroundColor: 'rgba(246, 194, 62, 0.1)',
+                    fill: true
+                }]
+            },
+            options: commonOptions
+        });
 
-    // --- نمودار تعداد بدهکاران ---
-    new Chart(document.getElementById('debtorsCountChart'), {
-        type: 'line',
-        data: {
-            labels: chartData.labels,
-            datasets: [{
-                data: chartData.debtorsCount,
-                borderColor: '#f6c23e',
-                backgroundColor: 'rgba(246, 194, 62, 0.1)',
-                fill: true
-            }]
-        },
-        options: commonOptions
-    });
+        // نمودار میانگین بدهی
+        new Chart(document.getElementById('averageDebtChart'), {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    data: chartData.averageDebt,
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                    fill: true
+                }]
+            },
+            options: commonOptions
+        });
 
-    // --- نمودار میانگین بدهی ---
-    new Chart(document.getElementById('averageDebtChart'), {
-        type: 'line',
-        data: {
-            labels: chartData.labels,
-            datasets: [{
-                data: chartData.averageDebt,
-                borderColor: '#1cc88a',
-                backgroundColor: 'rgba(28, 200, 138, 0.1)',
-                fill: true
-            }]
-        },
-        options: commonOptions
-    });
+        // نمایش روند تغییرات
+        document.querySelectorAll('[data-trend]').forEach(element => {
+            const type = element.dataset.trend;
+            const trend = trends[type] || 0;
+            const isPositive = trend > 0;
 
-    // --- انیمیشن اعداد ---
-    function animateValue(element) {
-        const finalValue = parseInt(element.dataset.value);
-        let startValue = 0;
-        const duration = 2000;
-        const steps = 60;
-        const stepValue = finalValue / steps;
-        const stepTime = duration / steps;
-        let current = startValue;
+            element.innerHTML = `
+                <i class="fas fa-arrow-${isPositive ? 'up' : 'down'} ${isPositive ? 'text-success' : 'text-danger'}"></i>
+                <span class="${isPositive ? 'text-success' : 'text-danger'}">
+                    ${Math.abs(trend)}% ${isPositive ? 'افزایش' : 'کاهش'}
+                </span>
+            `;
+        });
 
-        const timer = setInterval(() => {
-            current += stepValue;
-            if (current >= finalValue) {
-                element.textContent = new Intl.NumberFormat('fa-IR').format(finalValue);
-                clearInterval(timer);
-            } else {
-                element.textContent = new Intl.NumberFormat('fa-IR').format(Math.floor(current));
-            }
-        }, stepTime);
+    } catch (e) {
+        console.error('Chart Error:', e);
     }
 
-    // اجرای انیمیشن برای همه اعداد
+    // تنظیمات Date Range Picker
+    try {
+        $('.daterange').daterangepicker({
+            locale: {
+                format: 'jYYYY/jMM/jDD',
+                separator: ' - ',
+                applyLabel: 'تایید',
+                cancelLabel: 'انصراف',
+                fromLabel: 'از',
+                toLabel: 'تا',
+                customRangeLabel: 'بازه دلخواه',
+                weekLabel: 'هفته',
+                daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
+                monthNames: [
+                    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+                ],
+                firstDay: 6
+            },
+            opens: 'left',
+            autoUpdateInput: false
+        }).on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('jYYYY/jMM/jDD') + ' - ' + picker.endDate.format('jYYYY/jMM/jDD'));
+        });
+    } catch (e) {
+        console.error('DateRangePicker Error:', e);
+    }
+
+    // مدیریت چک‌باکس‌ها
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const personCheckboxes = document.querySelectorAll('.person-checkbox');
+
+    selectAllCheckbox?.addEventListener('change', function() {
+        personCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // نمایش مودال پرداخت
+    window.showPaymentModal = function(personId) {
+        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modal.show();
+    };
+
+    // انیمیشن اعداد
     document.querySelectorAll('[data-value]').forEach(element => {
         const value = parseInt(element.dataset.value);
         let current = 0;
@@ -772,134 +779,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 20);
     });
-    // --- تنظیمات Date Range Picker ---
-    try {
-            $('.daterange').daterangepicker({
-                locale: {
-                    format: 'jYYYY/jMM/jDD',
-                    separator: ' - ',
-                    applyLabel: 'تایید',
-                    cancelLabel: 'انصراف',
-                    fromLabel: 'از',
-                    toLabel: 'تا',
-                    customRangeLabel: 'بازه دلخواه',
-                    weekLabel: 'هفته',
-                    daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
-                    monthNames: [
-                        'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
-                    ],
-                    firstDay: 6
-                },
-                opens: 'left',
-                autoUpdateInput: false
-            }).on('apply.daterangepicker', function(ev, picker) {
-                $(this).val(picker.startDate.format('jYYYY/jMM/jDD') + ' - ' + picker.endDate.format('jYYYY/jMM/jDD'));
-            });
-        } catch (e) {
-            console.error('DateRangePicker Error:', e);
-        }
-
-    } catch (e) {
-        console.error('Chart Error:', e);
-    }
-
-    // --- مدیریت Select All برای چک‌باکس‌ها ---
-    const selectAllCheckbox = document.getElementById('selectAll');
-    const personCheckboxes = document.querySelectorAll('.person-checkbox');
-
-    selectAllCheckbox?.addEventListener('change', function() {
-        personCheckboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
-        });
-        updateSelectedCount();
-    });
-
-    personCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateSelectedCount();
-            const allChecked = [...personCheckboxes].every(cb => cb.checked);
-            if (selectAllCheckbox) selectAllCheckbox.checked = allChecked;
-        });
-    });
-
-    function updateSelectedCount() {
-        const selectedCount = [...personCheckboxes].filter(cb => cb.checked).length;
-        const totalCount = personCheckboxes.length;
-
-        // نمایش تعداد انتخاب شده‌ها (اگر المان مربوطه وجود داشته باشد)
-        const countElement = document.getElementById('selectedCount');
-        if (countElement) {
-            countElement.textContent = `${selectedCount} از ${totalCount}`;
-        }
-    }
-
-    // --- مدیریت مودال پرداخت ---
-    window.showPaymentModal = function(personId) {
-        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
-        document.getElementById('person_id').value = personId;
-        modal.show();
-    };
-
-    // اعتبارسنجی فرم پرداخت
-    const paymentForm = document.getElementById('paymentForm');
-    paymentForm?.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const amount = this.querySelector('[name="amount"]').value;
-        if (!amount || amount <= 0) {
-            alert('لطفاً مبلغ معتبر وارد کنید');
-            return;
-        }
-
-        // ارسال فرم با fetch
-        fetch(this.action, {
-            method: 'POST',
-            body: new FormData(this),
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
-                // رفرش صفحه یا نمایش پیام موفقیت
-                window.location.reload();
-            } else {
-                alert(data.message || 'خطا در ثبت پرداخت');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('خطا در ارتباط با سرور');
-        });
-    });
-
-    // --- راه‌اندازی تولتیپ‌ها ---
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // --- نمایش روند تغییرات ---
-    function updateTrends() {
-        const trends = @json($trends ?? []);
-        document.querySelectorAll('[data-trend]').forEach(element => {
-            const type = element.dataset.trend;
-            const value = trends[type] || 0;
-            const isPositive = value > 0;
-
-            element.innerHTML = `
-                <i class="fas fa-arrow-${isPositive ? 'up' : 'down'} ${isPositive ? 'text-success' : 'text-danger'}"></i>
-                <span class="${isPositive ? 'text-success' : 'text-danger'}">
-                    ${Math.abs(value)}% ${isPositive ? 'افزایش' : 'کاهش'}
-                </span>
-            `;
-        });
-    }
-
-    updateTrends();
 });
 </script>
 @endpush
