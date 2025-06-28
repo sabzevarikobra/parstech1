@@ -134,7 +134,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/store', [PersonController::class, 'store'])->name('store');
         Route::get('/customers', [PersonController::class, 'customers'])->name('customers');
         Route::get('/suppliers', [PersonController::class, 'suppliers'])->name('suppliers');
-        Route::get('/api/persons/next-code', [PersonController::class, 'getNextCode'])->name('persons.next-code');
 
     });
 

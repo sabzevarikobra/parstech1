@@ -217,9 +217,13 @@
 <script>
     $(document).ready(function() {
 
-
-
-
+        // مقداردهی اولیه استان و شهر (آیدی را با مقدار واقعی جایگزین کن)
+        var defaultProvinceId = 11; // آیدی خراسان رضوی
+        var defaultCityId = 1256;    // آیدی نقاب
+        // اگر کاربر قبلاً انتخاب نکرده (old value ندارد)، مقدار پیش‌فرض را ست کن
+        if (!$('#province_select').val()) {
+            $('#province_select').val(defaultProvinceId).trigger('change');
+        }
         // Live Preview Update
         function updatePreview() {
         const firstName = $('input[name="first_name"]').val();
@@ -284,45 +288,37 @@
             }
         });
 
-            // تنظیمات استان و شهر
-            $('#province_select').on('change', function() {
-            const provinceId = $(this).val();
-            const citySelect = $('#city_select');
-
-            // پاک کردن شهرهای قبلی
-            citySelect.empty().prop('disabled', true);
-
-            if (provinceId) {
-                // نمایش loading
-                citySelect.html('<option value="">در حال دریافت شهرها...</option>');
-
-                // درخواست Ajax
-                $.ajax({
-                    url: `/persons/province/${provinceId}/cities`,
-                    method: 'GET',
-                    success: function(response) {
-                        citySelect.empty().prop('disabled', false);
-                        citySelect.append('<option value="">انتخاب شهر</option>');
-
-                        // اضافه کردن شهرها
-                        response.forEach(function(city) {
-                            citySelect.append(`<option value="${city.id}">${city.text}</option>`);
-                        });
-
-                        // اگر مقدار قبلی وجود داشت
-                        @if(old('city'))
-                            citySelect.val('{{ old("city") }}');
-                        @endif
-                    },
-                    error: function() {
-                        citySelect.html('<option value="">خطا در دریافت شهرها</option>');
-                        console.error('خطا در دریافت لیست شهرها');
+    // وقتی استان تغییر کرد، شهرها را لود کن و بعد از لود، شهر نقاب را انتخاب کن
+    $('#province_select').on('change', function() {
+        var provinceId = $(this).val();
+        var citySelect = $('#city_select');
+        if (provinceId) {
+            $.ajax({
+                url: `/persons/province/${provinceId}/cities`,
+                method: 'GET',
+                success: function(response) {
+                    citySelect.empty().prop('disabled', false);
+                    citySelect.append('<option value="">انتخاب شهر</option>');
+                    response.forEach(function(city) {
+                        citySelect.append(`<option value="${city.id}">${city.text}</option>`);
+                    });
+                    // اگر استان پیش‌فرض است، شهر نقاب را ست کن
+                    if (provinceId == defaultProvinceId) {
+                        citySelect.val(defaultCityId);
                     }
-                });
-            } else {
-                citySelect.html('<option value="">ابتدا استان را انتخاب کنید</option>');
-            }
-        });
+                },
+                error: function() {
+                    citySelect.html('<option value="">خطا در دریافت شهرها</option>');
+                }
+            });
+        } else {
+            citySelect.html('<option value="">ابتدا استان را انتخاب کنید</option>');
+        }
+    });
+        // اگر استان پیش‌فرض انتخاب شده، شهرها را لود کن (برای بار اول)
+        if ($('#province_select').val() == defaultProvinceId) {
+        $('#province_select').trigger('change');
+    }
 
         // اگر از قبل استانی انتخاب شده بود (مثلا در حالت edit یا old input)
         @if(old('province'))

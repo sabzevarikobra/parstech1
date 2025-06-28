@@ -6,9 +6,9 @@
                 <div class="accounting-code-container">
                     <label class="form-label required-field">کد حسابداری</label>
                     <div class="input-group">
-                        <input type="text" name="accounting_code" id="accounting_code"
-                               class="form-control @error('accounting_code') is-invalid @enderror"
-                               value="{{ old('accounting_code') }}" required readonly>
+                        <input type="text" class="form-control" name="accounting_code" id="accounting_code"
+                               value="{{ old('accounting_code', $defaultCode ?? '') }}" readonly required>
+                               
                         <div class="input-group-append">
                             <div class="form-check form-switch ms-2 mt-2">
                                 <input type="checkbox" class="form-check-input" id="autoCodeSwitch" checked>
