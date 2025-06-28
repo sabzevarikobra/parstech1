@@ -595,6 +595,8 @@ class PersonController extends Controller
     public function debtors(Request $request)
     {
         $query = Person::where('balance', '>', 0);
+        $chartDataJson = json_encode($chartData);
+        $trendsJson = json_encode($trends);
 
         // محاسبه آمار 6 ماه اخیر
         $sixMonthsAgo = now()->subMonths(5)->startOfMonth();
@@ -674,8 +676,8 @@ class PersonController extends Controller
             'debtors',
             'totalDebt',
             'debtorsCount',
-            'chartData',
-            'trends'
+            'chartDataJson', // ارسال به صورت JSON
+            'trendsJson'     // ارسال به صورت JSON
         ));
     }
 

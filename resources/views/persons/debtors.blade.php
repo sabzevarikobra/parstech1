@@ -613,25 +613,38 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.9.2/build/moment-jalaali.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.9.2/build/moment-jalaali.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const chartData = {!! $chartDataJson !!};
+    const trends = {!! $trendsJson !!};
+
+    console.log('Chart Data:', chartData); // برای دیباگ
+    console.log('Trends:', trends);        // برای دیباگ
     // --- تنظیمات مشترک نمودارها ---
-    const commonChartOptions = {
+
+    // تنظیمات مشترک نمودارها
+    const commonOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
             tooltip: {
+                enabled: true,
+                mode: 'index',
+                intersect: false,
                 rtl: true,
                 titleAlign: 'right',
                 bodyAlign: 'right',
                 callbacks: {
                     label: function(context) {
-                        return new Intl.NumberFormat('fa-IR').format(context.raw) + ' تومان';
+                        let value = context.raw;
+                        return new Intl.NumberFormat('fa-IR').format(value) + ' تومان';
                     }
                 }
             }
@@ -760,28 +773,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 20);
     });
     // --- تنظیمات Date Range Picker ---
-    $('.daterange').daterangepicker({
-        locale: {
-            format: 'jYYYY/jMM/jDD',
-            separator: ' - ',
-            applyLabel: 'تایید',
-            cancelLabel: 'انصراف',
-            fromLabel: 'از',
-            toLabel: 'تا',
-            customRangeLabel: 'بازه دلخواه',
-            weekLabel: 'هفته',
-            daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
-            monthNames: [
-                'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
-            ],
-            firstDay: 6
-        },
-        opens: 'left',
-        autoUpdateInput: false
-    }).on('apply.daterangepicker', function(ev, picker) {
-        $(this).val(picker.startDate.format('jYYYY/jMM/jDD') + ' - ' + picker.endDate.format('jYYYY/jMM/jDD'));
-    });
+    try {
+            $('.daterange').daterangepicker({
+                locale: {
+                    format: 'jYYYY/jMM/jDD',
+                    separator: ' - ',
+                    applyLabel: 'تایید',
+                    cancelLabel: 'انصراف',
+                    fromLabel: 'از',
+                    toLabel: 'تا',
+                    customRangeLabel: 'بازه دلخواه',
+                    weekLabel: 'هفته',
+                    daysOfWeek: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'],
+                    monthNames: [
+                        'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+                    ],
+                    firstDay: 6
+                },
+                opens: 'left',
+                autoUpdateInput: false
+            }).on('apply.daterangepicker', function(ev, picker) {
+                $(this).val(picker.startDate.format('jYYYY/jMM/jDD') + ' - ' + picker.endDate.format('jYYYY/jMM/jDD'));
+            });
+        } catch (e) {
+            console.error('DateRangePicker Error:', e);
+        }
+
+    } catch (e) {
+        console.error('Chart Error:', e);
+    }
 
     // --- مدیریت Select All برای چک‌باکس‌ها ---
     const selectAllCheckbox = document.getElementById('selectAll');
